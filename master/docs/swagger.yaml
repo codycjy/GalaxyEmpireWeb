@@ -1,0 +1,217 @@
+definitions:
+  api.ResponseMessage:
+    properties:
+      message:
+        type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  models.User:
+    properties:
+      balance:
+        type: integer
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      password:
+        description: 'WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!'
+        type: string
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  user.UserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.User'
+      succeed:
+        type: boolean
+    type: object
+  user.UsersResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+      succeed:
+        type: boolean
+    type: object
+info:
+  contact: {}
+paths:
+  /ping:
+    get:
+      consumes:
+      - application/json
+      description: do ping
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ResponseMessage'
+      summary: ping example
+      tags:
+      - example
+  /user:
+    delete:
+      consumes:
+      - application/json
+      description: Delete User
+      parameters:
+      - description: User ID or Username
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with user data
+          schema:
+            $ref: '#/definitions/user.UserResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete user
+      tags:
+      - user
+    post:
+      consumes:
+      - application/json
+      description: Create User
+      parameters:
+      - description: User ID or Username
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with user data
+          schema:
+            $ref: '#/definitions/user.UserResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Crea user
+      tags:
+      - user
+    put:
+      consumes:
+      - application/json
+      description: Update User
+      parameters:
+      - description: User ID or Username
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with user data
+          schema:
+            $ref: '#/definitions/user.UserResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update user
+      tags:
+      - user
+  /user/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get User by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with user data
+          schema:
+            $ref: '#/definitions/user.UserResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get user by ID
+      tags:
+      - user
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get all Users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with user data
+          schema:
+            $ref: '#/definitions/user.UsersResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all users
+      tags:
+      - user
+swagger: "2.0"
