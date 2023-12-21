@@ -1,4 +1,20 @@
 definitions:
+  account.AccountResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.AccountDTO'
+      succeed:
+        type: boolean
+    type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+      succeed:
+        type: boolean
+    type: object
   api.ResponseMessage:
     properties:
       message:
@@ -12,8 +28,107 @@ definitions:
         description: Valid is true if Time is not NULL
         type: boolean
     type: object
+  models.Account:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      email:
+        type: string
+      expireAt:
+        type: string
+      id:
+        type: integer
+      password:
+        description: MD5 hash
+        type: string
+      routeTasks:
+        items:
+          $ref: '#/definitions/models.RouteTask'
+        type: array
+      server:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: integer
+      username:
+        type: string
+    type: object
+  models.AccountDTO:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      route_tasks:
+        items:
+          $ref: '#/definitions/models.RouteTask'
+        type: array
+      server:
+        type: string
+      username:
+        type: string
+    type: object
+  models.Fleet:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      routeTasks:
+        items:
+          $ref: '#/definitions/models.RouteTask'
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  models.RouteTask:
+    properties:
+      accountID:
+        type: integer
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      fleets:
+        items:
+          $ref: '#/definitions/models.Fleet'
+        type: array
+      from:
+        $ref: '#/definitions/models.Star'
+      id:
+        type: integer
+      next_start:
+        type: string
+      repeat:
+        type: integer
+      to:
+        $ref: '#/definitions/models.Star'
+      updatedAt:
+        type: string
+    type: object
+  models.Star:
+    properties:
+      galaxy:
+        description: 'gorm.Model // NOTE: Is this necessary?'
+        type: integer
+      is_moon:
+        type: boolean
+      location:
+        type: integer
+      solar:
+        type: integer
+    type: object
   models.User:
     properties:
+      accounts:
+        items:
+          $ref: '#/definitions/models.Account'
+        type: array
       balance:
         type: integer
       createdAt:
@@ -23,17 +138,32 @@ definitions:
       id:
         type: integer
       password:
-        description: 'WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!'
+        description: |-
+          WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!
+          NOTE: Checked in db, DO api check
         type: string
       updatedAt:
         type: string
       username:
         type: string
     type: object
+  models.UserDTO:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/models.AccountDTO'
+        type: array
+      balance:
+        type: integer
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
   user.UserResponse:
     properties:
       data:
-        $ref: '#/definitions/models.User'
+        $ref: '#/definitions/models.UserDTO'
       succeed:
         type: boolean
     type: object
@@ -41,7 +171,7 @@ definitions:
     properties:
       data:
         items:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/models.UserDTO'
         type: array
       succeed:
         type: boolean
@@ -49,6 +179,39 @@ definitions:
 info:
   contact: {}
 paths:
+  /account/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get Account by ID
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with account data
+          schema:
+            $ref: '#/definitions/account.AccountResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get account by ID
+      tags:
+      - account
   /ping:
     get:
       consumes:
@@ -86,13 +249,11 @@ paths:
         "400":
           description: Bad Request with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Delete user
       tags:
       - user
@@ -117,13 +278,11 @@ paths:
         "400":
           description: Bad Request with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Crea user
       tags:
       - user
@@ -148,13 +307,11 @@ paths:
         "400":
           description: Bad Request with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Update user
       tags:
       - user
@@ -179,13 +336,11 @@ paths:
         "400":
           description: Bad Request with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Get user by ID
       tags:
       - user
@@ -204,13 +359,11 @@ paths:
         "400":
           description: Bad Request with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error with error message
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Get all users
       tags:
       - user

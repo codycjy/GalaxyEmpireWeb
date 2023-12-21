@@ -2,6 +2,7 @@ package routes
 
 import (
 	"GalaxyEmpireWeb/api"
+	"GalaxyEmpireWeb/api/account"
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
 
@@ -12,10 +13,9 @@ import (
 )
 
 func init() {
-	RegisterRoutes()
 }
 
-func RegisterRoutes() *gin.Engine {
+func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	r := gin.Default()
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := r.Group("/api/v1")
@@ -24,8 +24,15 @@ func RegisterRoutes() *gin.Engine {
 	u := v1.Group("/user")
 	{
 		u.GET("/:id", user.GetUser)
-		u.POST("", user.CreateUser)
+		u.POST("", user.CreateUser) // TODO: Move to /register without auth
 		u.DELETE("", user.DeleteUser)
+		u.PUT("", user.UpdateUser)
 	}
+
+	a := v1.Group("/account")
+	{
+		a.GET("/:id", account.GetAccountById)
+	}
+
 	return r
 }

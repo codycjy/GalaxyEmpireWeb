@@ -1,8 +1,6 @@
 package models
 
 import (
-	"GalaxyEmpireWeb/repositories/mysql"
-
 	"gorm.io/gorm"
 )
 
@@ -10,64 +8,43 @@ type User struct {
 	gorm.Model
 	Username string `gorm:"unique;not null"`
 	// WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!
+	// NOTE: Checked in db, DO api check
 	Password string `gorm:"not null"`
-	Balance  int    `gorm:"not null"`
+	Balance  int
+	Accounts []Account `gorm:"foreignKey:UserID"`
 }
 
-func (u *User) GetBalance() int {
-	return u.Balance
-}
-
-func (u *User) Create() error {
-	db := mysql.GetDB()
-	err := db.Create(u)
-	if err != nil {
-		return err.Error
+func (user *User) ToDTO() *UserDTO {
+	accountDTOs := make([]AccountDTO, len(user.Accounts))
+	for i, account := range user.Accounts {
+		accountDTOs[i] = *account.ToDTO()
 	}
-	return nil
+	return &UserDTO{
+		ID:       user.ID,
+		Username: user.Username,
+		Balance:  user.Balance,
+		Accounts: accountDTOs,
+	}
 }
 
-func (u *User) Update() error {
-	db := mysql.GetDB()
-	err := db.Save(u)
-	if err != nil {
-		return err.Error
-	}
-	return nil
+type UserDTO struct {
+	ID       uint         `json:"id"`
+	Username string       `json:"username"`
+	Accounts []AccountDTO `json:"accounts"`
+	Balance  int          `json:"balance"`
 }
 
-func (u *User) Delete() error {
-	db := mysql.GetDB()
-	err := db.Delete(u)
-	if err != nil {
-		return err.Error
+func (userDTO *UserDTO) ToModel() *User {
+	accountModels := make([]Account, len(userDTO.Accounts))
+	for i, accountDTO := range userDTO.Accounts {
+		accountModels[i] = *accountDTO.ToModel()
 	}
-	return nil
-}
-
-func (u *User) GetByUsername(username string) error {
-	db := mysql.GetDB()
-	err := db.Where("username = ?", username).First(u)
-	if err != nil {
-		return err.Error
+	return &User{
+		Model: gorm.Model{
+			ID: userDTO.ID,
+		},
+		Username: userDTO.Username,
+		Balance:  userDTO.Balance,
+		Accounts: accountModels,
 	}
-	return nil
-}
-
-func (u *User) GetByID(id uint) error {
-	db := mysql.GetDB()
-	err := db.First(u, id)
-	if err != nil {
-		return err.Error
-	}
-	return nil
-}
-
-func GetAllUsers(users *[]User) error {
-	db := mysql.GetDB()
-	err := db.Find(&users)
-	if err != nil {
-		return err.Error
-	}
-	return nil
 }
