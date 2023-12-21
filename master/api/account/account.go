@@ -31,8 +31,8 @@ type AccountResponse struct {
 // @Router /account/{id} [get]
 func GetAccountById(c *gin.Context) {
 
-	accountService,err:=accountservice.GetService()
-	if err!=nil{
+	accountService, err := accountservice.GetService()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),

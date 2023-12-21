@@ -27,15 +27,12 @@ func InitService(db *gorm.DB) error {
 	return nil
 }
 
-
-func GetService() (*UserService,error){
+func GetService() (*UserService, error) {
 	if userService == nil {
 		return nil, errors.New("UserService is not initialized")
 	}
 	return userService, nil
 }
-
-
 
 func (service *UserService) GetById(id uint, fields []string) (*models.User, error) {
 	var user models.User
