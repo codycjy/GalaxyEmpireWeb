@@ -1,6 +1,6 @@
 name: Go Format Check in Master Folder
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   gofmt:
