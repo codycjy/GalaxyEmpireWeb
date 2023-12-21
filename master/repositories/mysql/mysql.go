@@ -1,6 +1,9 @@
+//go:build !test
+
 package mysql
 
 import (
+	"GalaxyEmpireWeb/config"
 	"sync"
 
 	"gorm.io/driver/mysql"
@@ -12,7 +15,7 @@ var globalDB *gorm.DB
 var err error
 
 func ConnectDatabase() {
-	dsn := "" // TODO: Read dsn from config file
+	dsn := config.GetDSN("config/yamls/mysql.yaml")
 	globalDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")

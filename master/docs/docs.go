@@ -15,6 +15,56 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/account/{id}": {
+            "get": {
+                "description": "Get Account by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Get account by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with account data",
+                        "schema": {
+                            "$ref": "#/definitions/account.AccountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/ping": {
             "get": {
                 "description": "do ping",
@@ -72,15 +122,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -118,15 +166,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -164,15 +210,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -210,15 +254,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -247,15 +289,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error with error message",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -263,6 +303,31 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "account.AccountResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/models.AccountDTO"
+                },
+                "succeed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "succeed": {
+                    "type": "boolean"
+                }
+            }
+        },
         "api.ResponseMessage": {
             "type": "object",
             "properties": {
@@ -283,9 +348,159 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Account": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expireAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "description": "MD5 hash",
+                    "type": "string"
+                },
+                "routeTasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RouteTask"
+                    }
+                },
+                "server": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AccountDTO": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "route_tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RouteTask"
+                    }
+                },
+                "server": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Fleet": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "routeTasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RouteTask"
+                    }
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RouteTask": {
+            "type": "object",
+            "properties": {
+                "accountID": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "fleets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Fleet"
+                    }
+                },
+                "from": {
+                    "$ref": "#/definitions/models.Star"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "next_start": {
+                    "type": "string"
+                },
+                "repeat": {
+                    "type": "integer"
+                },
+                "to": {
+                    "$ref": "#/definitions/models.Star"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Star": {
+            "type": "object",
+            "properties": {
+                "galaxy": {
+                    "description": "gorm.Model // NOTE: Is this necessary?",
+                    "type": "integer"
+                },
+                "is_moon": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "integer"
+                },
+                "solar": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.User": {
             "type": "object",
             "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Account"
+                    }
+                },
                 "balance": {
                     "type": "integer"
                 },
@@ -299,7 +514,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "password": {
-                    "description": "WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!",
+                    "description": "WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!\nNOTE: Checked in db, DO api check",
                     "type": "string"
                 },
                 "updatedAt": {
@@ -310,11 +525,31 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UserDTO": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.AccountDTO"
+                    }
+                },
+                "balance": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "user.UserResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/models.User"
+                    "$ref": "#/definitions/models.UserDTO"
                 },
                 "succeed": {
                     "type": "boolean"
@@ -327,7 +562,7 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.User"
+                        "$ref": "#/definitions/models.UserDTO"
                     }
                 },
                 "succeed": {
