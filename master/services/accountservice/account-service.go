@@ -13,6 +13,7 @@ type AccountService struct {
 }
 
 var accountService *AccountService
+
 func NewService(db *gorm.DB) *AccountService {
 	return &AccountService{
 		DB: db,
@@ -25,7 +26,7 @@ func InitService(db *gorm.DB) error {
 	accountService = NewService(db)
 	return nil
 }
-func GetService() (*AccountService,error) {
+func GetService() (*AccountService, error) {
 	if accountService == nil {
 		return nil, errors.New("AccountService is not initialized")
 	}
