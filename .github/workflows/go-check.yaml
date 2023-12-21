@@ -9,10 +9,10 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '^1.21'  # 指定 Go 版本
+        go-version: '^1.21'  
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Check formatting in master folder
       run: |
@@ -22,3 +22,18 @@ jobs:
           exit 1
         fi
 
+  gotest:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '^1.21'  
+
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Run Go tests in master folder
+      run: |
+        cd master
+        go test ./...
