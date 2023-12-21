@@ -1,4 +1,4 @@
-name: Go Format Check in Master Folder
+name: Go Check in Master Folder
 
 on: [pull_request]
 
@@ -10,6 +10,8 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '^1.21'  
+        cache-dependency-path: |
+             master/go.sum
 
     - name: Check out code
       uses: actions/checkout@v4
