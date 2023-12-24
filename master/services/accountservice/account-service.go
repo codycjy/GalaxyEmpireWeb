@@ -43,7 +43,7 @@ func (service *AccountService) GetById(id uint, fields []string) (*models.Accoun
 	return &account, err
 }
 
-func (service *AccountService) GetByUserId(userId uint,fields []string) (*[]models.Account, error) {
+func (service *AccountService) GetByUserId(userId uint, fields []string) (*[]models.Account, error) {
 	userservice := userservice.NewService(service.DB)
 	fields = append(fields, "Accounts")
 	user, err := userservice.GetById(userId, fields)

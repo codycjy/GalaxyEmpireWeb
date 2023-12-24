@@ -100,7 +100,7 @@ func TestAccountService_GetByUserId(t *testing.T) {
 			userId := tt.setup(tx)
 
 			service := NewService(tx)
-			got, err := service.GetByUserId(userId)
+			got, err := service.GetByUserId(userId, []string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetByUserId() error = %v, wantErr %v", err, tt.wantErr)
 				return

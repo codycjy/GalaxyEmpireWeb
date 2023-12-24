@@ -33,7 +33,6 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 		balance.PUT("", user.UpdateBalance)
 	}
 
-
 	a := v1.Group("/account")
 	{
 		a.GET("/:id", account.GetAccountByID)
