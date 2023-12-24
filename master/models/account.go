@@ -10,10 +10,10 @@ import (
 // It includes fields for the username, password, email, server, and related tasks.
 type Account struct {
 	gorm.Model
-	Username   string `gorm:"not null;uniqueIndex:idx_username_server"`
+	Username   string `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_server"`
 	Password   string `gorm:"not null"` // MD5 hash
 	Email      string `gorm:"not null"`
-	Server     string `gorm:"not null;uniqueIndex:idx_username_server"`
+	Server     string `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_server"`
 	ExpireAt   time.Time
 	UserID     uint
 	RouteTasks []RouteTask `gorm:"foreignKey:AccountID"`
