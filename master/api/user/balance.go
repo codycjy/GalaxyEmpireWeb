@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-//UpdateUser godoc
+// UpdateUser godoc
 // @Summary Update a user balance
 // @Description Update a user balance
 // @Tags user
@@ -59,7 +59,7 @@ func UpdateBalance(c *gin.Context) {
 		})
 		return
 	}
-	userDTO:=user.ToDTO()
+	userDTO := user.ToDTO()
 	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
 		Data:    userDTO,

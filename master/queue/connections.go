@@ -45,7 +45,7 @@ func InitConnection() {
 
 }
 func GetRabbitMQ() *RabbitMQConnection {
-	if rabbitMQConnection==nil{
+	if rabbitMQConnection == nil {
 		InitConnection()
 	}
 	return rabbitMQConnection

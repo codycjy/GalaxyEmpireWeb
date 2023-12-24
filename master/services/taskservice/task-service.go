@@ -137,7 +137,6 @@ func (s *taskService) processResponseMessage(msg amqp.Delivery) {
 	s.processTaskResponse(&taskResponse)
 	msg.Ack(false)
 
-
 }
 
 func (s *taskService) processTaskResponse(taskResponse *models.TaskResponse) {
@@ -150,4 +149,3 @@ func (s *taskService) processTaskResponse(taskResponse *models.TaskResponse) {
 func (s *taskService) taskRetry(taskID int) {
 
 }
-
