@@ -15,6 +15,56 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/account/user/{id}": {
+            "get": {
+                "description": "Get Account by User ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Get account by User ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with account data",
+                        "schema": {
+                            "$ref": "#/definitions/account.userAccountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/account/{id}": {
             "get": {
                 "description": "Get Account by ID",
@@ -41,7 +91,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with account data",
                         "schema": {
-                            "$ref": "#/definitions/account.AccountResponse"
+                            "$ref": "#/definitions/account.accountResponse"
                         }
                     },
                     "400": {
@@ -82,7 +132,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ResponseMessage"
+                            "$ref": "#/definitions/api.responseMessage"
                         }
                     }
                 }
@@ -116,7 +166,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with user data",
                         "schema": {
-                            "$ref": "#/definitions/user.UserResponse"
+                            "$ref": "#/definitions/user.userResponse"
                         }
                     },
                     "400": {
@@ -160,7 +210,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with user data",
                         "schema": {
-                            "$ref": "#/definitions/user.UserResponse"
+                            "$ref": "#/definitions/user.userResponse"
                         }
                     },
                     "400": {
@@ -204,11 +254,61 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with user data",
                         "schema": {
-                            "$ref": "#/definitions/user.UserResponse"
+                            "$ref": "#/definitions/user.userResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/balance": {
+            "put": {
+                "description": "Update a user balance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Update a user balance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with user data",
+                        "schema": {
+                            "$ref": "#/definitions/user.userResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found with error message",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -248,7 +348,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with user data",
                         "schema": {
-                            "$ref": "#/definitions/user.UserResponse"
+                            "$ref": "#/definitions/user.userResponse"
                         }
                     },
                     "400": {
@@ -283,7 +383,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with user data",
                         "schema": {
-                            "$ref": "#/definitions/user.UsersResponse"
+                            "$ref": "#/definitions/user.usersResponse"
                         }
                     },
                     "400": {
@@ -303,11 +403,22 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "account.AccountResponse": {
+        "account.accountResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "$ref": "#/definitions/models.AccountDTO"
+                },
+                "succeed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "account.userAccountResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/models.UserDTO"
                 },
                 "succeed": {
                     "type": "boolean"
@@ -328,7 +439,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ResponseMessage": {
+        "api.responseMessage": {
             "type": "object",
             "properties": {
                 "message": {
@@ -545,7 +656,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.UserResponse": {
+        "user.userResponse": {
             "type": "object",
             "properties": {
                 "data": {
@@ -556,7 +667,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.UsersResponse": {
+        "user.usersResponse": {
             "type": "object",
             "properties": {
                 "data": {

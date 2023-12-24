@@ -12,7 +12,7 @@ type AccountService struct {
 	DB *gorm.DB
 }
 
-var accountService *AccountService
+var accountServiceInstance *AccountService
 
 func NewService(db *gorm.DB) *AccountService {
 	return &AccountService{
@@ -20,17 +20,17 @@ func NewService(db *gorm.DB) *AccountService {
 	}
 }
 func InitService(db *gorm.DB) error {
-	if accountService != nil {
+	if accountServiceInstance != nil {
 		return errors.New("AccountService is already initialized")
 	}
-	accountService = NewService(db)
+	accountServiceInstance = NewService(db)
 	return nil
 }
 func GetService() (*AccountService, error) {
-	if accountService == nil {
+	if accountServiceInstance == nil {
 		return nil, errors.New("AccountService is not initialized")
 	}
-	return accountService, nil
+	return accountServiceInstance, nil
 }
 
 func (service *AccountService) GetById(id uint, fields []string) (*models.Account, error) {
@@ -43,13 +43,21 @@ func (service *AccountService) GetById(id uint, fields []string) (*models.Accoun
 	return &account, err
 }
 
-func (service *AccountService) GetByUserId(userId uint) (*[]models.Account, error) {
+func (service *AccountService) GetByUserId(userId uint,fields []string) (*[]models.Account, error) {
 	userservice := userservice.NewService(service.DB)
-	user, err := userservice.GetById(userId, []string{"Accounts"})
+	fields = append(fields, "Accounts")
+	user, err := userservice.GetById(userId, fields)
 	if err != nil {
 		return nil, err
 	}
 	return &user.Accounts, nil
 }
 
-// TODO: Create
+func (service *AccountService) Update(account *models.Account) error {
+	return service.DB.Save(account).Error
+}
+
+func (service *AccountService) Delete(ID uint) error {
+	return service.DB.Delete(&models.Account{}, ID).Error
+
+}

@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Config struct {
+type MysqlConfig struct {
 	DB struct {
 		Host       string            `yaml:"host"`
 		Port       string            `yaml:"port"`
@@ -20,13 +20,13 @@ type Config struct {
 	} `yaml:"db"`
 }
 
-func LoadConfig(filename string) (*Config, error) {
+func LoadConfig(filename string) (*MysqlConfig, error) {
 	buf, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	config := &Config{}
+	config := &MysqlConfig{}
 	err = yaml.Unmarshal(buf, config)
 	if err != nil {
 		return nil, err

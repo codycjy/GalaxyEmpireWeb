@@ -1,8 +1,15 @@
 definitions:
-  account.AccountResponse:
+  account.accountResponse:
     properties:
       data:
         $ref: '#/definitions/models.AccountDTO'
+      succeed:
+        type: boolean
+    type: object
+  account.userAccountResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.UserDTO'
       succeed:
         type: boolean
     type: object
@@ -15,7 +22,7 @@ definitions:
       succeed:
         type: boolean
     type: object
-  api.ResponseMessage:
+  api.responseMessage:
     properties:
       message:
         type: string
@@ -160,14 +167,14 @@ definitions:
       username:
         type: string
     type: object
-  user.UserResponse:
+  user.userResponse:
     properties:
       data:
         $ref: '#/definitions/models.UserDTO'
       succeed:
         type: boolean
     type: object
-  user.UsersResponse:
+  user.usersResponse:
     properties:
       data:
         items:
@@ -196,7 +203,7 @@ paths:
         "200":
           description: Successful response with account data
           schema:
-            $ref: '#/definitions/account.AccountResponse'
+            $ref: '#/definitions/account.accountResponse'
         "400":
           description: Bad Request with error message
           schema:
@@ -212,6 +219,39 @@ paths:
       summary: Get account by ID
       tags:
       - account
+  /account/user/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get Account by User ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with account data
+          schema:
+            $ref: '#/definitions/account.userAccountResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get account by User ID
+      tags:
+      - account
   /ping:
     get:
       consumes:
@@ -223,7 +263,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.ResponseMessage'
+            $ref: '#/definitions/api.responseMessage'
       summary: ping example
       tags:
       - example
@@ -245,7 +285,7 @@ paths:
         "200":
           description: Successful response with user data
           schema:
-            $ref: '#/definitions/user.UserResponse'
+            $ref: '#/definitions/user.userResponse'
         "400":
           description: Bad Request with error message
           schema:
@@ -274,7 +314,7 @@ paths:
         "200":
           description: Successful response with user data
           schema:
-            $ref: '#/definitions/user.UserResponse'
+            $ref: '#/definitions/user.userResponse'
         "400":
           description: Bad Request with error message
           schema:
@@ -303,7 +343,7 @@ paths:
         "200":
           description: Successful response with user data
           schema:
-            $ref: '#/definitions/user.UserResponse'
+            $ref: '#/definitions/user.userResponse'
         "400":
           description: Bad Request with error message
           schema:
@@ -332,7 +372,7 @@ paths:
         "200":
           description: Successful response with user data
           schema:
-            $ref: '#/definitions/user.UserResponse'
+            $ref: '#/definitions/user.userResponse'
         "400":
           description: Bad Request with error message
           schema:
@@ -342,6 +382,39 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get user by ID
+      tags:
+      - user
+  /user/balance:
+    put:
+      consumes:
+      - application/json
+      description: Update a user balance
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with user data
+          schema:
+            $ref: '#/definitions/user.userResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update a user balance
       tags:
       - user
   /users:
@@ -355,7 +428,7 @@ paths:
         "200":
           description: Successful response with user data
           schema:
-            $ref: '#/definitions/user.UsersResponse'
+            $ref: '#/definitions/user.usersResponse'
         "400":
           description: Bad Request with error message
           schema:

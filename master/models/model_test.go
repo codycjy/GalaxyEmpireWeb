@@ -14,6 +14,8 @@ func TestAutoMigrate(t *testing.T) {
 		&RouteTask{},
 		&DailyTask{},
 		&ExtraTask{},
+		&Fleet{},
+		&TaskLog{},
 	}
 
 	if err := db.AutoMigrate(models...); err != nil {

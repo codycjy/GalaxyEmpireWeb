@@ -6,6 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// Account represents a user account in the system.
+// It includes fields for the username, password, email, server, and related tasks.
 type Account struct {
 	gorm.Model
 	Username   string `gorm:"not null;uniqueIndex:idx_username_server"`
@@ -17,6 +19,7 @@ type Account struct {
 	RouteTasks []RouteTask `gorm:"foreignKey:AccountID"`
 }
 
+// ToDTO converts an Account to an AccountDTO.
 func (account *Account) ToDTO() *AccountDTO {
 	return &AccountDTO{
 		ID:         account.ID,
@@ -27,6 +30,8 @@ func (account *Account) ToDTO() *AccountDTO {
 	}
 }
 
+// AccountDTO is a data transfer object for Account.
+// It is used when interacting with external systems.
 type AccountDTO struct {
 	ID         uint        `json:"id"`
 	Username   string      `json:"username"`
@@ -35,6 +40,7 @@ type AccountDTO struct {
 	RouteTasks []RouteTask `json:"route_tasks"`
 }
 
+// ToModel converts an AccountDTO to an Account.
 func (accountDTO *AccountDTO) ToModel() *Account {
 	return &Account{
 		Model: gorm.Model{
