@@ -12,11 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type UserResponse struct {
+type userResponse struct {
 	Succeed bool            `json:"succeed"`
 	Data    *models.UserDTO `json:"data"`
 }
-type UsersResponse struct {
+type usersResponse struct {
 	Succeed bool             `json:"succeed"`
 	Data    []models.UserDTO `json:"data"`
 }
@@ -28,19 +28,11 @@ type UsersResponse struct {
 // @Accept json
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 200 {object} UserResponse "Successful response with user data"
+// @Success 200 {object} userResponse "Successful response with user data"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user/{id} [get]
 func GetUser(c *gin.Context) {
-	userService, err := userservice.GetService()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
-			Message: "User service not initialized",
-		})
-	}
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -51,6 +43,14 @@ func GetUser(c *gin.Context) {
 		})
 		return
 	}
+	userService, err := userservice.GetService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+		})
+	}
 	user, err := userService.GetById(uint(id), []string{})
 	if err != nil {
 		c.JSON(http.StatusOK, api.ErrorResponse{
@@ -60,19 +60,19 @@ func GetUser(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
 		Data:    user.ToDTO(),
 	})
 }
 
-// GetUser godoc
+// GetUsers godoc
 // @Summary Get all users
 // @Description Get all Users
 // @Tags user
 // @Accept json
 // @Produce json
-// @Success 200 {object} UsersResponse "Successful response with user data"
+// @Success 200 {object} usersResponse "Successful response with user data"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /users [get]
@@ -99,34 +99,26 @@ func GetUsers(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UsersResponse{
+	c.JSON(http.StatusOK, usersResponse{
 		Succeed: true,
 		Data:    usersDTO,
 	})
 }
 
-// GetUser godoc
+// CreateUser godoc
 // @Summary Crea user
 // @Description Create User
 // @Tags user
 // @Accept json
 // @Produce json
 // @Param user body models.User required "User ID or Username"
-// @Success 200 {object} UserResponse "Successful response with user data"
+// @Success 200 {object} userResponse "Successful response with user data"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [post]
 func CreateUser(c *gin.Context) {
-	userService, err := userservice.GetService()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
-			Message: "User service not initialized",
-		})
-	}
 	var user *models.User
-	err = c.BindJSON(user)
+	err := c.BindJSON(user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
@@ -134,6 +126,14 @@ func CreateUser(c *gin.Context) {
 			Message: "Failed to bind to user",
 		})
 		return
+	}
+	userService, err := userservice.GetService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+		})
 	}
 	err = userService.Create(user)
 
@@ -145,7 +145,7 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
 		Data:    user.ToDTO(),
 	})
@@ -159,20 +159,11 @@ func CreateUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param user body models.User required "User ID or Username"
-// @Success 200 {object} UserResponse "Successful response with user data"
+// @Success 200 {object} userResponse "Successful response with user data"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [put]
 func UpdateUser(c *gin.Context) {
-	userService, exists := c.MustGet("userService").(*userservice.UserService)
-	if !exists {
-		c.JSON(http.StatusInternalServerError,
-			api.ErrorResponse{
-				Succeed: false,
-				Error:   "Server configuration error"})
-		return
-	}
-
 	var user *models.User
 	err := c.BindJSON(&user)
 	if err != nil {
@@ -182,6 +173,14 @@ func UpdateUser(c *gin.Context) {
 			Message: "Failed to bind to user",
 		})
 		return
+	}
+	userService, err := userservice.GetService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+		})
 	}
 	err = userService.Update(user)
 
@@ -193,7 +192,7 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
 		Data:    user.ToDTO(),
 	})
@@ -207,19 +206,11 @@ func UpdateUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param user body models.User required "User ID or Username"
-// @Success 200 {object} UserResponse "Successful response with user data"
+// @Success 200 {object} userResponse "Successful response with user data"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [delete]
 func DeleteUser(c *gin.Context) {
-	userService, exists := c.MustGet("userService").(*userservice.UserService)
-	if !exists {
-		c.JSON(http.StatusInternalServerError,
-			api.ErrorResponse{
-				Succeed: false,
-				Error:   "Server configuration error"})
-		return
-	}
 	var user *models.User
 	err := c.BindJSON(&user)
 	if err != nil {
@@ -228,6 +219,14 @@ func DeleteUser(c *gin.Context) {
 			Error:   err.Error(),
 			Message: "Failed to bind to user",
 		})
+		return
+	}
+	userService, exists := c.MustGet("userService").(*userservice.UserService)
+	if !exists {
+		c.JSON(http.StatusInternalServerError,
+			api.ErrorResponse{
+				Succeed: false,
+				Error:   "Server configuration error"})
 		return
 	}
 
@@ -242,7 +241,7 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, UserResponse{
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
 	})
 }

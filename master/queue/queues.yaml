@@ -1,0 +1,10 @@
+test:
+  - "TEST_NormalQueue"
+  - "TEST_HPQueue"
+  - "TEST_ResponseQueue"
+
+prod:
+  - "NormalQueue"
+  - "HPQueue"
+  - "ResponseQueue"
+

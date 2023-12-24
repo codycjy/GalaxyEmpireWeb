@@ -28,10 +28,16 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 		u.DELETE("", user.DeleteUser)
 		u.PUT("", user.UpdateUser)
 	}
+	balance := u.Group("/balance")
+	{
+		balance.PUT("", user.UpdateBalance)
+	}
+
 
 	a := v1.Group("/account")
 	{
-		a.GET("/:id", account.GetAccountById)
+		a.GET("/:id", account.GetAccountByID)
+		a.GET("/user/:userid", account.GetAccountByUserID)
 	}
 
 	return r
