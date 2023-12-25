@@ -31,14 +31,9 @@ func main() {
 	} else {
 		db = mysql.GetDB()
 	}
+	models.AutoMigrate(db)
 	servicesInit(db, mq)
-	db.AutoMigrate(
-		&models.User{},
-		&models.Account{},
-		&models.RouteTask{},
-		&models.Fleet{},
-		&models.TaskLog{},
-	)
+
 	r := routes.RegisterRoutes(services)
 	r.Run(":9333")
 }

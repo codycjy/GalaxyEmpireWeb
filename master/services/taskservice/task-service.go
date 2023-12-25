@@ -48,12 +48,15 @@ func GetQueueNames() []string {
 
 func InitService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
 	if taskServiceInstance == nil {
-		taskServiceInstance = &taskService{DB: db, MQ: mq}
+		taskServiceInstance = NewService(db, mq)
+	}
+	for _, processor := range taskProcessors {
+		processor.InitService(db, mq)
 	}
 	return taskServiceInstance
 }
 
-func NewService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
+func NewService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService { // newService ?
 	return &taskService{
 		DB: db,
 		MQ: mq,
@@ -144,7 +147,18 @@ func (s *taskService) processTaskResponse(taskResponse *models.TaskResponse) {
 		s.taskRetry(taskResponse.TaskID)
 		return
 	}
+	switch taskResponse.TaskType {
+	case models.RouteTaskName:
+		{
+			taskProcessors[models.RouteTaskName].ProcessTask(&taskResponse.Data)
+		}
+	case models.PlanTaskName:
+		{
+			taskProcessors[models.PlanTaskName].ProcessTask(&taskResponse.Data)
 
+		}
+
+	}
 }
 func (s *taskService) taskRetry(taskID int) {
 
