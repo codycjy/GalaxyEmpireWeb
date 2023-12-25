@@ -1,4 +1,4 @@
-name: Go Format Check in Master Folder
+name: Go Check in Master Folder
 
 on: [pull_request]
 
@@ -6,13 +6,15 @@ jobs:
   gofmt:
     runs-on: ubuntu-latest
     steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '^1.21'  
+        cache-dependency-path: "**/*.sum"
 
-    - name: Check out code
-      uses: actions/checkout@v4
 
     - name: Check formatting in master folder
       run: |
@@ -25,13 +27,15 @@ jobs:
   gotest:
     runs-on: ubuntu-latest
     steps:
+
+    - name: Check out code
+      uses: actions/checkout@v4
+
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '^1.21'  
-
-    - name: Check out code
-      uses: actions/checkout@v4
+        cache-dependency-path: "**/*.sum"
 
     - name: Run Go tests in master folder
       run: |
