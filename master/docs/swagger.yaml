@@ -109,6 +109,12 @@ definitions:
         $ref: '#/definitions/models.Star'
       id:
         type: integer
+      logs:
+        items:
+          $ref: '#/definitions/models.taskLog'
+        type: array
+      name:
+        type: string
       next_start:
         type: string
       repeat:
@@ -165,6 +171,23 @@ definitions:
       id:
         type: integer
       username:
+        type: string
+    type: object
+  models.taskLog:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      referID:
+        description: 引用的 Task ID
+        type: integer
+      referType:
+        description: 引用的 Task 类型
+        type: string
+      updatedAt:
         type: string
     type: object
   user.userResponse:

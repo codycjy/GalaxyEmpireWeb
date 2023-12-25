@@ -571,6 +571,15 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.taskLog"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
                 "next_start": {
                     "type": "string"
                 },
@@ -652,6 +661,31 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.taskLog": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "referID": {
+                    "description": "引用的 Task ID",
+                    "type": "integer"
+                },
+                "referType": {
+                    "description": "引用的 Task 类型",
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }

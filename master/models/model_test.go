@@ -12,10 +12,9 @@ func TestAutoMigrate(t *testing.T) {
 		&User{},
 		&Account{},
 		&RouteTask{},
-		&DailyTask{},
-		&ExtraTask{},
+		&PlanTask{},
 		&Fleet{},
-		&TaskLog{},
+		&taskLog{},
 	}
 
 	if err := db.AutoMigrate(models...); err != nil {
