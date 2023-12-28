@@ -507,6 +507,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "expireAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -558,6 +561,9 @@ const docTemplate = `{
                 },
                 "deletedAt": {
                     "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "enabled": {
+                    "type": "boolean"
                 },
                 "fleets": {
                     "type": "array",

@@ -496,6 +496,9 @@
                 "email": {
                     "type": "string"
                 },
+                "expireAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -547,6 +550,9 @@
                 },
                 "deletedAt": {
                     "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "enabled": {
+                    "type": "boolean"
                 },
                 "fleets": {
                     "type": "array",
