@@ -53,6 +53,10 @@ func InitService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
 	for _, processor := range taskProcessors {
 		processor.InitService(db, mq)
 	}
+
+	taskGenerator := initTaskGenerator(db, mq, taskServiceInstance)
+	go taskGenerator.FindTasks()
+
 	return taskServiceInstance
 }
 
@@ -82,7 +86,7 @@ func (s *taskService) SetupQueue(queue []string) {
 
 }
 
-func (s *taskService) SendMessage(message string, queue string) error {
+func (s *taskService) sendMessage(message string, queue string) error {
 	err := s.MQ.Channel.Publish(
 		"",    // 交换机
 		queue, // 队列名称
@@ -101,7 +105,7 @@ func (s *taskService) SendTask(task models.Task) error {
 	if err != nil {
 		return err
 	}
-	err = s.SendMessage(string(jsonStr), queue)
+	err = s.sendMessage(string(jsonStr), queue)
 	return nil
 }
 func (s *taskService) ConsumeResponseQueue() {
