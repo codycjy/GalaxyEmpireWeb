@@ -14,7 +14,7 @@ type Account struct {
 	Password   string `gorm:"not null"` // MD5 hash
 	Email      string `gorm:"not null"`
 	Server     string `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_server"`
-	ExpireAt   time.Time 
+	ExpireAt   time.Time
 	UserID     uint
 	RouteTasks []RouteTask `gorm:"foreignKey:AccountID"`
 }
@@ -26,7 +26,7 @@ func NewAccount(username, password, email, server string) *Account {
 		Password: password,
 		Email:    email,
 		Server:   server,
-		ExpireAt: time.Now().AddDate(0,0,-1),
+		ExpireAt: time.Now().AddDate(0, 0, -1),
 	}
 }
 

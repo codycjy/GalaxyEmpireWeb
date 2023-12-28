@@ -66,7 +66,7 @@ func TestUserService_GetById(t *testing.T) {
 			}()
 
 			InitService(tx)
-			service,err:=GetService()
+			service, err := GetService()
 			// 设置测试数据
 			testUser := tt.setup(tx)
 

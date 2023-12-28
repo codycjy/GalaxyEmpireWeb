@@ -46,7 +46,7 @@ func TestAccountService_GetAccountById(t *testing.T) {
 			defer tx.Rollback()
 
 			InitService(tx)
-			service,err:=GetService()
+			service, err := GetService()
 			id := tt.setup(tx)
 
 			got, err := service.GetById(id, []string{})
