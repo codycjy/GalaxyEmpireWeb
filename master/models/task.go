@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -13,8 +14,10 @@ type Task interface {
 
 type BaseTask struct {
 	gorm.Model
-	Name string    `json:"name"`
-	Logs []taskLog `gorm:"polymorphic:Refer"`
+	Name      string    `json:"name"`
+	Logs      []taskLog `gorm:"polymorphic:Refer"`
+	NextStart time.Time `json:"next_start"`
+	Enabled   bool      `json:"enabled"`
 }
 
 type TaskResponse struct {
@@ -33,6 +36,7 @@ type taskLog struct {
 	// 其他字段...
 }
 
-func (log *taskLog) NewLog() *taskLog {
-	return nil
+func NewLog() *taskLog {
+
+	return &taskLog{}
 }

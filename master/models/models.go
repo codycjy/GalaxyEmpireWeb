@@ -11,6 +11,7 @@ func AutoMigrate(db *gorm.DB) {
 		&User{},
 		&Account{},
 		&RouteTask{},
+		&PlanTask{},
 		&Fleet{},
 		&taskLog{},
 	)
