@@ -67,6 +67,8 @@ definitions:
     properties:
       email:
         type: string
+      expireAt:
+        type: string
       id:
         type: integer
       route_tasks:
@@ -101,6 +103,8 @@ definitions:
         type: string
       deletedAt:
         $ref: '#/definitions/gorm.DeletedAt'
+      enabled:
+        type: boolean
       fleets:
         items:
           $ref: '#/definitions/models.Fleet'
