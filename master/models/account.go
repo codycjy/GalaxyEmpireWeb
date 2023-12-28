@@ -14,9 +14,20 @@ type Account struct {
 	Password   string `gorm:"not null"` // MD5 hash
 	Email      string `gorm:"not null"`
 	Server     string `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_server"`
-	ExpireAt   time.Time
+	ExpireAt   time.Time 
 	UserID     uint
 	RouteTasks []RouteTask `gorm:"foreignKey:AccountID"`
+}
+
+// TODO: add init func to set expire time
+func NewAccount(username, password, email, server string) *Account {
+	return &Account{
+		Username: username,
+		Password: password,
+		Email:    email,
+		Server:   server,
+		ExpireAt: time.Now().AddDate(0,0,-1),
+	}
 }
 
 // ToDTO converts an Account to an AccountDTO.
@@ -27,6 +38,7 @@ func (account *Account) ToDTO() *AccountDTO {
 		Email:      account.Email,
 		Server:     account.Server,
 		RouteTasks: account.RouteTasks,
+		ExpireAt:   account.ExpireAt,
 	}
 }
 
@@ -38,6 +50,7 @@ type AccountDTO struct {
 	Email      string      `json:"email"`
 	Server     string      `json:"server"`
 	RouteTasks []RouteTask `json:"route_tasks"`
+	ExpireAt   time.Time
 }
 
 // ToModel converts an AccountDTO to an Account.
