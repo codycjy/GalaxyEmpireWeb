@@ -4,13 +4,14 @@ import (
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
 	"encoding/json"
+	"fmt"
 
 	"gorm.io/gorm"
 )
 
 var taskProcessors = map[string]TaskProcessor{
 	models.RouteTaskName: &RouteTaskProcessor{},
-	models.PlanTaskName:  &DailyTaskProcessor{},
+	models.PlanTaskName:  &PlanTaskProcessor{},
 }
 
 type TaskProcessor interface {
@@ -23,29 +24,35 @@ type RouteTaskProcessor struct {
 	mq *queue.RabbitMQConnection
 }
 
-func (r *RouteTaskProcessor) InitService(db *gorm.DB, mq *queue.RabbitMQConnection) {
-	r.db = db
-	r.mq = mq
+func (processor *RouteTaskProcessor) InitService(db *gorm.DB, mq *queue.RabbitMQConnection) {
+	processor.db = db
+	processor.mq = mq
 }
 
 func (processor *RouteTaskProcessor) ProcessTask(data *json.RawMessage) error {
-	var routeTask models.RouteTask
+	var routeTask *models.RouteTask
 	if err := json.Unmarshal(*data, &routeTask); err != nil {
 		return err
+	}
+	log := models.NewLog()
+	processor.db.Save(routeTask)
+	err := processor.db.Create(&log).Error
+	if err != nil {
+		fmt.Printf("log: %v\n", log)
 	}
 
 	return nil
 }
 
-type DailyTaskProcessor struct {
+type PlanTaskProcessor struct {
 	db *gorm.DB
 	mq *queue.RabbitMQConnection
 }
 
-func (d *DailyTaskProcessor) InitService(db *gorm.DB, mq *queue.RabbitMQConnection) {
-	d.db = db
-	d.mq = mq
+func (processor *PlanTaskProcessor) InitService(db *gorm.DB, mq *queue.RabbitMQConnection) {
+	processor.db = db
+	processor.mq = mq
 }
-func (processor *DailyTaskProcessor) ProcessTask(data *json.RawMessage) error {
+func (processor *PlanTaskProcessor) ProcessTask(data *json.RawMessage) error {
 	return nil
 }
