@@ -65,10 +65,11 @@ func TestUserService_GetById(t *testing.T) {
 				tx.Rollback()
 			}()
 
+			InitService(tx)
+			service,err:=GetService()
 			// 设置测试数据
 			testUser := tt.setup(tx)
 
-			service := NewService(tx)
 			var id uint
 			if testUser != nil {
 				id = testUser.ID
