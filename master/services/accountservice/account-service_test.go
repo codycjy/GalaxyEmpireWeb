@@ -45,9 +45,10 @@ func TestAccountService_GetAccountById(t *testing.T) {
 			tx := db.Begin()
 			defer tx.Rollback()
 
+			InitService(tx)
+			service,err:=GetService()
 			id := tt.setup(tx)
 
-			service := NewService(tx)
 			got, err := service.GetById(id, []string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AccountService.GetAccountById() error = %v, wantErr %v", err, tt.wantErr)
