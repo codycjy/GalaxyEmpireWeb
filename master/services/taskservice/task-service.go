@@ -1,18 +1,18 @@
 package taskservice
 
 import (
+	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
 	"encoding/json"
-	"log"
-	"os"
 
 	"github.com/streadway/amqp"
-	"gopkg.in/yaml.v2"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 var taskServiceInstance *taskService
+var log = logger.GetLogger()
 
 type taskService struct {
 	DB *gorm.DB
@@ -21,29 +21,6 @@ type taskService struct {
 type QueueConfig struct {
 	Test []string `yaml:"test"`
 	Prod []string `yaml:"prod"`
-}
-
-func GetQueueNames() []string {
-	// 读取环境变量
-	env := os.Getenv("env")
-
-	// 读取配置文件
-	yamlFile, err := os.ReadFile("queue/queues.yaml")
-	if err != nil {
-		log.Fatalf("yamlFile.Get err   #%v ", err)
-	}
-
-	var config QueueConfig
-	err = yaml.Unmarshal(yamlFile, &config)
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
-	}
-
-	// 根据环境变量选择队列
-	if env == "test" {
-		return config.Test
-	}
-	return config.Prod
 }
 
 func InitService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
@@ -79,7 +56,9 @@ func (s *taskService) SetupQueue(queue []string) {
 		)
 
 		if err != nil {
-			log.Fatalf("Failed to declare a queue: %v", err)
+			log.Fatal("Failed to declare a queue: %v",
+				zap.Error(err),
+			)
 		}
 
 	}
@@ -121,7 +100,9 @@ func (s *taskService) ConsumeResponseQueue() {
 		nil,       // 参数
 	)
 	if err != nil {
-		log.Fatalf("Failed to register a consumer: %v", err)
+		log.Fatal("Failed to register a consumer",
+			zap.Error(err),
+		)
 	}
 
 	go func() {
@@ -133,12 +114,16 @@ func (s *taskService) ConsumeResponseQueue() {
 
 func (s *taskService) processResponseMessage(msg amqp.Delivery) {
 	// TODO: process response message
-	log.Printf("Received a message: %s", msg.Body)
 	jsonStr := string(msg.Body)
+	log.Info("[service]Received a message: %s",
+		zap.String("json body", jsonStr),
+	)
 	var taskResponse models.TaskResponse
 	err := json.Unmarshal([]byte(jsonStr), &taskResponse)
 	if err != nil {
-		log.Printf("Unmarshal error: %v", err)
+		log.Error("[service]Unmarshal task response failed",
+			zap.Error(err),
+		)
 		msg.Ack(false)
 	}
 	s.processTaskResponse(&taskResponse)
