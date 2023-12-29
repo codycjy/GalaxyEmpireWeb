@@ -411,6 +411,9 @@ const docTemplate = `{
                 },
                 "succeed": {
                     "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
                 }
             }
         },
@@ -422,6 +425,9 @@ const docTemplate = `{
                 },
                 "succeed": {
                     "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
                 }
             }
         },
@@ -436,6 +442,9 @@ const docTemplate = `{
                 },
                 "succeed": {
                     "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
                 }
             }
         },

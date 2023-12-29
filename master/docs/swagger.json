@@ -400,6 +400,9 @@
                 },
                 "succeed": {
                     "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
                 }
             }
         },
@@ -411,6 +414,9 @@
                 },
                 "succeed": {
                     "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
                 }
             }
         },
@@ -425,6 +431,9 @@
                 },
                 "succeed": {
                     "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
                 }
             }
         },
