@@ -5,6 +5,8 @@ definitions:
         $ref: '#/definitions/models.AccountDTO'
       succeed:
         type: boolean
+      traceID:
+        type: string
     type: object
   account.userAccountResponse:
     properties:
@@ -12,6 +14,8 @@ definitions:
         $ref: '#/definitions/models.UserDTO'
       succeed:
         type: boolean
+      traceID:
+        type: string
     type: object
   api.ErrorResponse:
     properties:
@@ -21,6 +25,8 @@ definitions:
         type: string
       succeed:
         type: boolean
+      traceID:
+        type: string
     type: object
   api.responseMessage:
     properties:
