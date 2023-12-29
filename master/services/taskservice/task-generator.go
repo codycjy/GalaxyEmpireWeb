@@ -3,9 +3,11 @@ package taskservice
 import (
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
-	"log"
+	"GalaxyEmpireWeb/utils"
+	"context"
 	"time"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -24,7 +26,7 @@ func initTaskGenerator(db *gorm.DB, mq *queue.RabbitMQConnection, taskService *t
 
 }
 
-func (generator *TaskGenerator) generateRouteTask() {
+func (generator *TaskGenerator) generateRouteTask(ctx context.Context) {
 	var routeTasks []models.RouteTask
 	var accountIDs []uint
 	now := time.Now()
@@ -42,7 +44,9 @@ func (generator *TaskGenerator) generateRouteTask() {
 	for _, task := range routeTasks {
 		err := generator.taskService.SendTask(&task)
 		if err != nil {
-			log.Printf("send task error: %v", err)
+			log.Warn("[service]Send route task error",
+				zap.Error(err),
+			)
 			continue
 		}
 	}
@@ -66,7 +70,9 @@ func (generator *TaskGenerator) generatePlanTask() {
 	for _, task := range planTasks {
 		err := generator.taskService.SendTask(&task)
 		if err != nil {
-			log.Printf("send task error: %v", err)
+			log.Warn("[service]Send plan task error",
+				zap.Error(err),
+			)
 			continue
 		}
 	}
@@ -74,7 +80,8 @@ func (generator *TaskGenerator) generatePlanTask() {
 
 func (generator *TaskGenerator) FindTasks() {
 	for {
-		generator.generateRouteTask()
+		routeCTX := utils.NewContextWithTraceID()
+		generator.generateRouteTask(routeCTX)
 		// generator.generatePlanTask()
 		time.Sleep(15 * time.Second)
 	}

@@ -6,6 +6,7 @@ import (
 	"GalaxyEmpireWeb/api"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/accountservice"
+	"GalaxyEmpireWeb/utils"
 	"net/http"
 	"strconv"
 
@@ -15,10 +16,12 @@ import (
 type accountResponse struct {
 	Succeed bool               `json:"succeed"`
 	Data    *models.AccountDTO `json:"data"`
+	TraceID string             `json:"traceID"`
 }
 type userAccountResponse struct {
 	Succeed bool            `json:"succeed"`
 	Data    *models.UserDTO `json:"data"`
+	TraceID string          `json:"traceID"`
 }
 
 // GetAccountByID godoc
@@ -34,15 +37,8 @@ type userAccountResponse struct {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /account/{id} [get]
 func GetAccountByID(c *gin.Context) {
-
-	accountService, err := accountservice.GetService()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
-			Message: "Account service not initialized",
-		})
-	}
+	traceID := c.GetString("traceID")
+	ctx := utils.NewContext(traceID)
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -50,22 +46,34 @@ func GetAccountByID(c *gin.Context) {
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Wrong User ID",
+			TraceID: traceID,
 		})
 		return
 	}
+	accountService, err := accountservice.GetService(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Account service not initialized",
+			TraceID: traceID,
+		})
+	}
 
-	account, err := accountService.GetById(uint(id), []string{})
+	account, err := accountService.GetById(ctx, uint(id), []string{})
 	if err != nil {
 		c.JSON(http.StatusNotFound, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Account not found",
+			TraceID: traceID,
 		})
 		return
 	}
 	c.JSON(http.StatusOK, accountResponse{
 		Succeed: true,
 		Data:    account.ToDTO(),
+		TraceID: traceID,
 	})
 
 }
@@ -83,14 +91,7 @@ func GetAccountByID(c *gin.Context) {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /account/user/{id} [get]
 func GetAccountByUserID(c *gin.Context) {
-	accountService, err := accountservice.GetService()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
-			Message: "Account service not initialized",
-		})
-	}
+	traceID := c.GetString("traceID")
 	idStr := c.Param("userid")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -98,16 +99,28 @@ func GetAccountByUserID(c *gin.Context) {
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Wrong User ID",
+			TraceID: traceID,
 		})
 		return
 	}
 
-	account, err := accountService.GetByUserId(uint(id), []string{})
+	ctx := utils.NewContext(traceID)
+	accountService, err := accountservice.GetService(ctx)
+	account, err := accountService.GetByUserId(ctx, uint(id), []string{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Account service not initialized",
+			TraceID: traceID,
+		})
+	}
 	if err != nil {
 		c.JSON(http.StatusNotFound, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Account not found",
+			TraceID: traceID,
 		})
 		return
 	}
@@ -123,5 +136,6 @@ func GetAccountByUserID(c *gin.Context) {
 	c.JSON(http.StatusOK, userAccountResponse{
 		Succeed: true,
 		Data:    user,
+		TraceID: traceID,
 	})
 }

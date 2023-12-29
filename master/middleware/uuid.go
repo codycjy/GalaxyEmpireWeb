@@ -5,10 +5,10 @@ import (
 	"github.com/google/uuid"
 )
 
-func UUIDMiddleware() gin.HandlerFunc {
+func TraceIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uuid := uuid.New().String()
-		c.Set("UUID", uuid)
+		c.Set("traceID", uuid)
 		c.Next()
 	}
 

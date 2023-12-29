@@ -4,12 +4,16 @@ package user
 
 import (
 	"GalaxyEmpireWeb/api"
+	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/userservice"
+	"GalaxyEmpireWeb/utils"
+	"context"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type userResponse struct {
@@ -20,6 +24,8 @@ type usersResponse struct {
 	Succeed bool             `json:"succeed"`
 	Data    []models.UserDTO `json:"data"`
 }
+
+var log = logger.GetLogger()
 
 // GetUser godoc
 // @Summary Get user by ID
@@ -33,6 +39,7 @@ type usersResponse struct {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user/{id} [get]
 func GetUser(c *gin.Context) {
+	traceID := c.GetString("traceID")
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -40,23 +47,27 @@ func GetUser(c *gin.Context) {
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Wrong User ID",
+			TraceID: traceID,
 		})
 		return
 	}
-	userService, err := userservice.GetService()
+	ctx := utils.NewContext(traceID)
+	userService, err := userservice.GetService(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "User service not initialized",
+			TraceID: traceID,
 		})
 	}
-	user, err := userService.GetById(uint(id), []string{})
+	user, err := userService.GetById(ctx, uint(id), []string{})
 	if err != nil {
 		c.JSON(http.StatusOK, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "User not found",
+			TraceID: traceID,
 		})
 		return
 	}
@@ -77,15 +88,21 @@ func GetUser(c *gin.Context) {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /users [get]
 func GetUsers(c *gin.Context) {
-	userService, err := userservice.GetService()
+	traceID := c.GetString("traceID")
+	ctx := context.WithValue(context.Background(), "traceID", traceID)
+	userService, err := userservice.GetService(ctx)
 	if err != nil {
+		log.Error("[api]User service not initialized",
+			zap.String("traceID", traceID),
+		)
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "User service not initialized",
+			TraceID: traceID,
 		})
 	}
-	users, err := userService.GetAllUsers()
+	users, err := userService.GetAllUsers(ctx)
 	usersDTO := make([]models.UserDTO, len(users))
 	for _, user := range users {
 		usersDTO = append(usersDTO, *user.ToDTO())
@@ -96,6 +113,7 @@ func GetUsers(c *gin.Context) {
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Failed to get users",
+			TraceID: traceID,
 		})
 		return
 	}
@@ -117,31 +135,41 @@ func GetUsers(c *gin.Context) {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [post]
 func CreateUser(c *gin.Context) {
+	traceID := c.GetString("traceID")
 	var user *models.User
 	err := c.BindJSON(user)
 	if err != nil {
+
+		log.Error("[api]Failed to bind to user",
+			zap.String("traceID", traceID),
+		)
+
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Failed to bind to user",
+			TraceID: traceID,
 		})
 		return
 	}
-	userService, err := userservice.GetService()
+	ctx := context.WithValue(context.Background(), "traceID", traceID)
+	userService, err := userservice.GetService(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "User service not initialized",
+			TraceID: traceID,
 		})
 	}
-	err = userService.Create(user)
+	err = userService.Create(ctx, user)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Create user failed",
+			TraceID: traceID,
 		})
 		return
 	}
@@ -164,31 +192,40 @@ func CreateUser(c *gin.Context) {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [put]
 func UpdateUser(c *gin.Context) {
+	traceID := c.GetString("traceID")
+
 	var user *models.User
 	err := c.BindJSON(&user)
 	if err != nil {
+		log.Error("[api]Failed to bind to user",
+			zap.String("traceID", traceID),
+		)
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Failed to bind to user",
+			TraceID: traceID,
 		})
 		return
 	}
-	userService, err := userservice.GetService()
+	ctx := context.WithValue(context.Background(), "traceID", traceID)
+	userService, err := userservice.GetService(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "User service not initialized",
+			TraceID: traceID,
 		})
 	}
-	err = userService.Update(user)
+	err = userService.Update(ctx, user)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Update user failed",
+			TraceID: traceID,
 		})
 		return
 	}
@@ -211,32 +248,34 @@ func UpdateUser(c *gin.Context) {
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [delete]
 func DeleteUser(c *gin.Context) {
+	traceID := c.GetString("traceID")
+
 	var user *models.User
 	err := c.BindJSON(&user)
+
 	if err != nil {
+		log.Error("[api]Failed to bind to user",
+			zap.String("traceID", traceID),
+		)
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Failed to bind to user",
+			TraceID: traceID,
 		})
 		return
 	}
-	userService, exists := c.MustGet("userService").(*userservice.UserService)
-	if !exists {
-		c.JSON(http.StatusInternalServerError,
-			api.ErrorResponse{
-				Succeed: false,
-				Error:   "Server configuration error"})
-		return
-	}
 
-	err = userService.Delete(user.ID)
+	ctx := context.WithValue(context.Background(), "traceID", traceID)
+	userService, err := userservice.GetService(ctx)
+	err = userService.Delete(ctx, user.ID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Delete user failed",
+			TraceID: traceID,
 		})
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"GalaxyEmpireWeb/api/account"
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
+	"GalaxyEmpireWeb/middleware"
 
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -17,6 +18,7 @@ func init() {
 
 func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	r := gin.Default()
+	r.Use(middleware.TraceIDMiddleware())
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := r.Group("/api/v1")
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

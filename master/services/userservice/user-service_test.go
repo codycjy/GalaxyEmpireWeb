@@ -3,12 +3,14 @@ package userservice
 import (
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/repositories/sqlite"
+	"GalaxyEmpireWeb/utils"
 	"testing"
 
 	"gorm.io/gorm"
 )
 
 func TestUserService_GetById(t *testing.T) {
+	ctx := utils.NewContextWithTraceID()
 	type fields struct {
 		DB *gorm.DB
 	}
@@ -66,7 +68,7 @@ func TestUserService_GetById(t *testing.T) {
 			}()
 
 			InitService(tx)
-			service, err := GetService()
+			service, err := GetService(ctx)
 			// 设置测试数据
 			testUser := tt.setup(tx)
 
@@ -75,7 +77,7 @@ func TestUserService_GetById(t *testing.T) {
 				id = testUser.ID
 			}
 
-			got, err := service.GetById(id, tt.args.fields)
+			got, err := service.GetById(ctx, id, tt.args.fields)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UserService.GetById() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -89,6 +91,7 @@ func TestUserService_GetById(t *testing.T) {
 }
 
 func TestUserService_Create(t *testing.T) {
+	ctx := utils.NewContextWithTraceID()
 	type fields struct {
 		DB *gorm.DB
 	}
@@ -160,7 +163,7 @@ func TestUserService_Create(t *testing.T) {
 			service := &UserService{
 				DB: tx,
 			}
-			if err := service.Create(tt.args.user); (err != nil) != tt.wantErr {
+			if err := service.Create(ctx, tt.args.user); (err != nil) != tt.wantErr {
 				t.Errorf("UserService.Create() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -180,6 +183,7 @@ func TestUserService_Create(t *testing.T) {
 }
 
 func TestUserService_Update(t *testing.T) {
+	ctx := utils.NewContextWithTraceID()
 	db := sqlite.GetTestDB()
 	db.AutoMigrate(&models.User{}) // Create User table
 
@@ -233,7 +237,7 @@ func TestUserService_Update(t *testing.T) {
 			service := &UserService{
 				DB: tx, // Use the transaction as the DB
 			}
-			if err := service.Update(tt.args.user); (err != nil) != tt.wantErr {
+			if err := service.Update(ctx, tt.args.user); (err != nil) != tt.wantErr {
 				t.Errorf("UserService.Update() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -249,7 +253,9 @@ func TestUserService_Update(t *testing.T) {
 		})
 	}
 }
+
 func TestUserService_Delete(t *testing.T) {
+	ctx := utils.NewContextWithTraceID()
 	db := sqlite.GetTestDB()
 	db.AutoMigrate(&models.User{}) // Create User table
 
@@ -264,56 +270,65 @@ func TestUserService_Delete(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
+		setup   func(*gorm.DB) uint // Setup function to create test data
 	}{
 		{
-			name: "Test Delete User",
+			name: "Test Delete Existing User",
+			fields: fields{
+				DB: db,
+			},
+			wantErr: false,
+			setup: func(tx *gorm.DB) uint {
+				testUser := &models.User{
+					Username: "Delete User",
+					Password: "testpassword",
+					Balance:  100,
+				}
+				tx.Create(testUser)
+				return testUser.ID
+			},
+		},
+		{
+			name: "Test Delete Nonexistent User",
 			fields: fields{
 				DB: db,
 			},
 			args: args{
-				id: 0, // We will set this later
+				id: 999, // ID of a user that does not exist
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Start a new transaction
 			tx := tt.fields.DB.Begin()
-			defer func() {
-				// Rollback the transaction after test
-				tx.Rollback()
-			}()
+			defer tx.Rollback()
 
-			// Insert a test user into the database
-			testUser := &models.User{
-				Username: "Delete User",
-				Password: "testpassword",
-				Balance:  100,
+			if tt.setup != nil {
+				tt.args.id = tt.setup(tx)
 			}
-			tx.Create(testUser)
-			tt.args.id = testUser.ID
 
 			service := &UserService{
-				DB: tx, // Use the transaction as the DB
+				DB: tx,
 			}
-			if err := service.Delete(tt.args.id); (err != nil) != tt.wantErr {
+			if err := service.Delete(ctx, tt.args.id); (err != nil) != tt.wantErr {
 				t.Errorf("UserService.Delete() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !tt.wantErr {
-				// Fetch the deleted user from the database
 				var deletedUser models.User
-				tx.First(&deletedUser, tt.args.id)
-				// Check if the user is deleted correctly
-				if deletedUser.ID == tt.args.id {
+				res := tx.First(&deletedUser, tt.args.id)
+				if res.Error == nil {
 					t.Errorf("UserService.Delete() = %v, user still exists", deletedUser)
 				}
 			}
 		})
 	}
 }
+
 func TestUserService_GetAllUsers(t *testing.T) {
+	ctx := utils.NewContextWithTraceID()
 	type fields struct {
 		DB *gorm.DB
 	}
@@ -364,7 +379,7 @@ func TestUserService_GetAllUsers(t *testing.T) {
 			service := &UserService{
 				DB: tx, // Use the transaction as the DB
 			}
-			gotUsers, err := service.GetAllUsers()
+			gotUsers, err := service.GetAllUsers(ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UserService.GetAllUsers() error = %v, wantErr %v", err, tt.wantErr)
 				return

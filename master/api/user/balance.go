@@ -4,6 +4,7 @@ import (
 	"GalaxyEmpireWeb/api"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/userservice"
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,8 @@ import (
 // @Router /user/balance [put]
 func UpdateBalance(c *gin.Context) {
 	var user *models.User
+	uuid := c.GetString("traceID")
+	ctx := context.WithValue(context.Background(), "traceID", uuid)
 	err := c.ShouldBindJSON(user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
@@ -33,7 +36,7 @@ func UpdateBalance(c *gin.Context) {
 		})
 		return
 	}
-	userservice, err := userservice.GetService()
+	userservice, err := userservice.GetService(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -43,7 +46,7 @@ func UpdateBalance(c *gin.Context) {
 
 		return
 	}
-	err = userservice.UpdateBalance(user)
+	err = userservice.UpdateBalance(ctx, user)
 	if err == gorm.ErrRecordNotFound {
 		c.JSON(http.StatusNotFound, api.ErrorResponse{
 			Succeed: false,

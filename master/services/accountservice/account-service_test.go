@@ -3,7 +3,7 @@ package accountservice
 import (
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/repositories/sqlite"
-	"reflect"
+	"GalaxyEmpireWeb/utils"
 	"testing"
 
 	"gorm.io/gorm"
@@ -13,6 +13,7 @@ func TestAccountService_GetAccountById(t *testing.T) {
 	db := sqlite.GetTestDB()
 	db.AutoMigrate(&models.User{}, &models.Account{})
 
+	ctx := utils.NewContextWithTraceID()
 	tests := []struct {
 		name    string
 		setup   func(*gorm.DB) uint
@@ -46,15 +47,15 @@ func TestAccountService_GetAccountById(t *testing.T) {
 			defer tx.Rollback()
 
 			InitService(tx)
-			service, err := GetService()
+			service, err := GetService(ctx)
 			id := tt.setup(tx)
 
-			got, err := service.GetById(id, []string{})
+			got, err := service.GetById(ctx, id, []string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AccountService.GetAccountById() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got.ID, tt.wantID) {
+			if got.ID != tt.wantID {
 				t.Errorf("AccountService.GetAccountById() = %v, want %v", got, tt.wantID)
 			}
 		})
@@ -63,7 +64,8 @@ func TestAccountService_GetAccountById(t *testing.T) {
 
 func TestAccountService_GetByUserId(t *testing.T) {
 	db := sqlite.GetTestDB()
-	db.AutoMigrate(&models.User{}, &models.Account{})
+	models.AutoMigrate(db)
+	ctx := utils.NewContextWithTraceID()
 
 	tests := []struct {
 		name    string
@@ -75,14 +77,38 @@ func TestAccountService_GetByUserId(t *testing.T) {
 			name: "Test get accounts by user ID",
 			setup: func(tx *gorm.DB) uint {
 				// Create test data within the transaction
-				account1 := models.Account{Username: "testaccount1", Password: "testpassword", Email: "test1@example.com", Server: "testserver"}
-				account2 := models.Account{Username: "testaccount2", Password: "testpassword", Email: "test2@example.com", Server: "testserver"}
-				user := models.User{Username: "testuser", Password: "testpassword", Accounts: []models.Account{account1, account2}}
+				account1 := models.Account{Username: "testaccount1",
+					Password: "testpassword",
+					Email:    "test1@example.com",
+					Server:   "testserver",
+				}
+				account2 := models.Account{
+					Username: "testaccount2",
+					Password: "testpassword",
+					Email:    "test2@example.com",
+					Server:   "testserver",
+				}
+				user := models.User{Username: "testuser",
+					Password: "testpassword",
+					Accounts: []models.Account{account1, account2},
+				}
 				tx.Create(&user)
 				return user.ID
 			},
 			wantErr: false,
-			want:    []models.Account{{Username: "testaccount1", Password: "testpassword", Email: "test1@example.com", Server: "testserver"}, {Username: "testaccount2", Password: "testpassword", Email: "test2@example.com", Server: "testserver"}},
+			want: []models.Account{
+				{
+					Username: "testaccount1",
+					Password: "testpassword",
+					Email:    "test1@example.com",
+					Server:   "testserver",
+				},
+				{
+					Username: "testaccount2",
+					Password: "testpassword",
+					Email:    "test2@example.com",
+					Server:   "testserver"},
+			},
 		},
 		{
 			name:    "Test get accounts by invalid user ID",
@@ -101,7 +127,7 @@ func TestAccountService_GetByUserId(t *testing.T) {
 			userId := tt.setup(tx)
 
 			service := NewService(tx)
-			got, err := service.GetByUserId(userId, []string{})
+			got, err := service.GetByUserId(ctx, userId, []string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetByUserId() error = %v, wantErr %v", err, tt.wantErr)
 				return
