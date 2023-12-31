@@ -7,38 +7,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
 
+	r "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	RDB *r.Client
 }
 
 var userServiceInstance *UserService
 var log = logger.GetLogger()
+var rolePrefix = "role_"
 
-func NewService(db *gorm.DB) *UserService {
+func NewService(db *gorm.DB, rdb *r.Client) *UserService {
 	return &UserService{
-		DB: db,
+		DB:  db,
+		RDB: rdb,
 	}
 }
 
-func InitService(db *gorm.DB) error {
+func InitService(db *gorm.DB, rdb *r.Client) error {
 	if userServiceInstance != nil {
 		return errors.New("UserService is already initialized")
 	}
-	userServiceInstance = NewService(db)
+	userServiceInstance = NewService(db, rdb)
 	return nil
 }
 
-func GetService(ctx context.Context) (*UserService, error) {
+func GetService(ctx context.Context) (*UserService, error) { // TODO:
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]GetService", zap.String("traceID", traceID))
 
 	if userServiceInstance == nil {
-		log.Error("[service]UserService is not initialized", zap.String("traceID", traceID))
+		log.DPanic("[service]UserService is not initialized", zap.String("traceID", traceID))
 		return nil, errors.New("UserService is not initialized")
 	}
 	return userServiceInstance, nil
@@ -153,4 +159,54 @@ func (service *UserService) UpdateBalance(ctx context.Context, user *models.User
 	}
 
 	return result.Error
+}
+
+func (service *UserService) GetUserRole(ctx context.Context, userID uint) int {
+	traceID := utils.TraceIDFromContext(ctx)
+	log.Info("[service]GetUserRole",
+		zap.String("traceID", traceID),
+		zap.Uint("userID", userID),
+	)
+	key := fmt.Sprintf("%s%d", rolePrefix, userID)
+	roleStr, err := service.RDB.Get(ctx, key).Result()
+
+	// 如果在Redis中找到了数据，将其转换为int并返回
+	if err == nil {
+		role, err := strconv.Atoi(roleStr)
+		if err == nil {
+			log.Info("[service]GetUserRole from redis",
+				zap.String("traceID", traceID),
+				zap.Uint("userID", userID),
+				zap.Int("role", role),
+			)
+			return role
+		}
+		log.Warn("[service]GetUserRole parse to uint failed",
+			zap.String("traceID", traceID),
+			zap.Uint("userID", userID),
+			zap.Error(err),
+		)
+	}
+
+	// 如果Redis中没有数据，从数据库查询
+	user, err := service.GetById(ctx, userID, []string{})
+	if err != nil {
+		log.Error("[service]GetUserRole from db failed",
+			zap.String("traceID", traceID),
+			zap.Uint("userID", userID),
+			zap.Error(err),
+		)
+		return -1
+	}
+	role := user.Role
+
+	// 将结果存储回Redis
+	service.RDB.Set(ctx, key, role, 4*time.Hour)
+	log.Info("[service]GetUserRole from db",
+		zap.String("traceID", traceID),
+		zap.Uint("userID", userID),
+		zap.Int("role", role),
+	)
+
+	return role
 }
