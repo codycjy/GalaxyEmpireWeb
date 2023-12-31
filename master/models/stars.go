@@ -5,6 +5,7 @@ type Star struct {
 	Galaxy   int  `json:"galaxy"`
 	Solar    int  `json:"solar"`
 	Location int  `json:"location"`
+	StarID   int  `json:"star_id"` // For node use enemy will be empty
 	IsMoon   bool `json:"is_moon"`
 }
 
