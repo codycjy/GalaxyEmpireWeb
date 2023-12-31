@@ -32,7 +32,7 @@ func InitService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
 	}
 
 	taskGenerator := initTaskGenerator(db, mq, taskServiceInstance)
-	go taskGenerator.FindTasks()
+	go taskGenerator.FindAllTasks()
 
 	return taskServiceInstance
 }
