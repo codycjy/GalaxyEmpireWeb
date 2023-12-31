@@ -1,14 +1,22 @@
 package logger
 
 import (
+	"os"
+
 	"go.uber.org/zap"
 )
 
 var log *zap.Logger
 
 func init() {
+
 	var err error
-	log, err = zap.NewProduction(zap.AddCaller())
+	if os.Getenv("env") == "test" {
+		log, err = zap.NewDevelopment(zap.AddCaller())
+	} else {
+		log, err = zap.NewProduction(zap.AddCaller())
+	}
+
 	if err != nil {
 		panic(err)
 	}
