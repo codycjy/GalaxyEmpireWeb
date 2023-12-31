@@ -7,8 +7,6 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/userservice"
-	"GalaxyEmpireWeb/utils"
-	"context"
 	"net/http"
 	"strconv"
 
@@ -51,8 +49,7 @@ func GetUser(c *gin.Context) {
 		})
 		return
 	}
-	ctx := utils.NewContext(traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c) //TODO: remove error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -61,9 +58,9 @@ func GetUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	user, err := userService.GetById(ctx, uint(id), []string{})
+	user, err := userService.GetById(c, uint(id), []string{})
 	if err != nil {
-		c.JSON(http.StatusOK, api.ErrorResponse{
+		c.JSON(http.StatusNotFound, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "User not found",
@@ -89,8 +86,7 @@ func GetUser(c *gin.Context) {
 // @Router /users [get]
 func GetUsers(c *gin.Context) {
 	traceID := c.GetString("traceID")
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c)
 	if err != nil {
 		log.Error("[api]User service not initialized",
 			zap.String("traceID", traceID),
@@ -102,7 +98,7 @@ func GetUsers(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	users, err := userService.GetAllUsers(ctx)
+	users, err := userService.GetAllUsers(c)
 	usersDTO := make([]models.UserDTO, len(users))
 	for _, user := range users {
 		usersDTO = append(usersDTO, *user.ToDTO())
@@ -152,8 +148,7 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -162,7 +157,7 @@ func CreateUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	err = userService.Create(ctx, user)
+	err = userService.Create(c, user)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
@@ -208,8 +203,7 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -218,7 +212,7 @@ func UpdateUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	err = userService.Update(ctx, user)
+	err = userService.Update(c, user)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
@@ -266,9 +260,8 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
-	err = userService.Delete(ctx, user.ID)
+	userService, err := userservice.GetService(c)
+	err = userService.Delete(c, user.ID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{

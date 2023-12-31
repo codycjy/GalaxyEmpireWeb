@@ -6,7 +6,6 @@ import (
 	"GalaxyEmpireWeb/api"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/accountservice"
-	"GalaxyEmpireWeb/utils"
 	"net/http"
 	"strconv"
 
@@ -38,7 +37,6 @@ type userAccountResponse struct {
 // @Router /account/{id} [get]
 func GetAccountByID(c *gin.Context) {
 	traceID := c.GetString("traceID")
-	ctx := utils.NewContext(traceID)
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -50,7 +48,7 @@ func GetAccountByID(c *gin.Context) {
 		})
 		return
 	}
-	accountService, err := accountservice.GetService(ctx)
+	accountService, err := accountservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -60,7 +58,7 @@ func GetAccountByID(c *gin.Context) {
 		})
 	}
 
-	account, err := accountService.GetById(ctx, uint(id), []string{})
+	account, err := accountService.GetById(c, uint(id), []string{})
 	if err != nil {
 		c.JSON(http.StatusNotFound, api.ErrorResponse{
 			Succeed: false,
@@ -104,9 +102,8 @@ func GetAccountByUserID(c *gin.Context) {
 		return
 	}
 
-	ctx := utils.NewContext(traceID)
-	accountService, err := accountservice.GetService(ctx)
-	account, err := accountService.GetByUserId(ctx, uint(id), []string{})
+	accountService, err := accountservice.GetService(c)
+	account, err := accountService.GetByUserId(c, uint(id), []string{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
