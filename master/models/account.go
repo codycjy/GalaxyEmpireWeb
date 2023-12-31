@@ -18,6 +18,11 @@ type Account struct {
 	UserID     uint
 	RouteTasks []RouteTask `gorm:"foreignKey:AccountID"`
 }
+type AccountInfo struct {
+	Username string `json:"username"`
+	Password string `json:"password"` // MD5 hash
+	Server   string `json:"server"`
+}
 
 // TODO: add init func to set expire time
 func NewAccount(username, password, email, server string) *Account {
@@ -39,6 +44,13 @@ func (account *Account) ToDTO() *AccountDTO {
 		Server:     account.Server,
 		RouteTasks: account.RouteTasks,
 		ExpireAt:   account.ExpireAt,
+	}
+}
+func (account *Account) ToInfo() *AccountInfo {
+	return &AccountInfo{
+		Username: account.Username,
+		Password: account.Password,
+		Server:   account.Server,
 	}
 }
 

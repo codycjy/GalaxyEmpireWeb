@@ -10,6 +10,9 @@ import (
 type Task interface {
 	QueueName() string
 	TaskType() string
+	SetAccountInfo(accountInfo AccountInfo)
+	GetAccountID() uint
+	GetID() uint
 }
 
 type BaseTask struct {
