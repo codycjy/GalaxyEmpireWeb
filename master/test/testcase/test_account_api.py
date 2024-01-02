@@ -30,6 +30,3 @@ class Test_Account():
         response = self.req_session.get(self.root_url + accountId)
         allure.attach(response.text, name="Response Data", attachment_type=allure.attachment_type.TEXT)
 
-if __name__ == '__main__':
-    pytest.main(["-s", "test_account_api.py", "--alluredir", '../result'])
-    os.system('allure generate ../result -o ../report')
