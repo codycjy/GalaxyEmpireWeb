@@ -40,10 +40,14 @@ func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 		Channel: ch,
 	}
 }
+
+// InitConnection 初始化 RabbitMQ 连接
 func InitConnection() {
 	rabbitMQConnection = NewRabbitMQConnection(config.GetRabbitMQConfig())
 
 }
+
+// GetRabbitMQ 获取 RabbitMQ 连接
 func GetRabbitMQ() *RabbitMQConnection {
 	if rabbitMQConnection == nil {
 		InitConnection()

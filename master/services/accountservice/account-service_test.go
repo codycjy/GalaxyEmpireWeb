@@ -2,8 +2,11 @@ package accountservice
 
 import (
 	"GalaxyEmpireWeb/models"
+	"GalaxyEmpireWeb/repositories/redis"
 	"GalaxyEmpireWeb/repositories/sqlite"
+	"GalaxyEmpireWeb/services/userservice"
 	"GalaxyEmpireWeb/utils"
+	"context"
 	"testing"
 
 	"gorm.io/gorm"
@@ -14,6 +17,8 @@ func TestAccountService_GetAccountById(t *testing.T) {
 	db.AutoMigrate(&models.User{}, &models.Account{})
 
 	ctx := utils.NewContextWithTraceID()
+	ctx = context.WithValue(ctx, "userID", uint(1)) // TODO: add to case
+	ctx = context.WithValue(ctx, "role", 1)
 	tests := []struct {
 		name    string
 		setup   func(*gorm.DB) uint
@@ -40,13 +45,15 @@ func TestAccountService_GetAccountById(t *testing.T) {
 		// 其他测试用例...
 	}
 
+	rdb := redis.GetRedisDB()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Begin a transaction
 			tx := db.Begin()
 			defer tx.Rollback()
 
-			InitService(tx)
+			InitService(tx, rdb)
+			userservice.InitService(tx, rdb)
 			service, err := GetService(ctx)
 			id := tt.setup(tx)
 
@@ -117,6 +124,7 @@ func TestAccountService_GetByUserId(t *testing.T) {
 			want:    nil,
 		},
 	}
+	rdb := redis.GetRedisDB()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -126,7 +134,7 @@ func TestAccountService_GetByUserId(t *testing.T) {
 
 			userId := tt.setup(tx)
 
-			service := NewService(tx)
+			service := NewService(tx, rdb)
 			got, err := service.GetByUserId(ctx, userId, []string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetByUserId() error = %v, wantErr %v", err, tt.wantErr)

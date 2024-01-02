@@ -8,7 +8,7 @@ import (
 
 var log *zap.Logger
 
-func init() {
+func initLogger() {
 
 	var err error
 	if os.Getenv("env") == "test" {
@@ -16,12 +16,18 @@ func init() {
 	} else {
 		log, err = zap.NewProduction(zap.AddCaller())
 	}
+	log.Info("Logger initialized")
 
 	if err != nil {
 		panic(err)
 	}
 }
 
+// GetLogger godoc
+// Get Global Logger
 func GetLogger() *zap.Logger {
+	if log == nil {
+		initLogger()
+	}
 	return log
 }
