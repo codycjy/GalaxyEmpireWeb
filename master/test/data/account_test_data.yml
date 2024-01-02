@@ -1,0 +1,9 @@
+test_getAccountsByUserId:
+  - ["user exist", "1"]
+  - ["user not exist", "2"]
+  - ["bad request", "w"]
+
+test_getAccountById:
+  - ["account exist", "7"]
+  - ["account not exist", "2"]
+  - ["bad request", "w"]
