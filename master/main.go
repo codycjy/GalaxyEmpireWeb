@@ -28,17 +28,20 @@ func servicesInit(
 	taskservice.InitService(db, mq)
 }
 
+var db *gorm.DB
+var mq *queue.RabbitMQConnection
+var rdb *r.Client
+
 func main() {
-	var db *gorm.DB
-	var mq *queue.RabbitMQConnection
-	var rdb *r.Client
 	rdb = redis.GetRedisDB()
 	mq = queue.GetRabbitMQ()
+
 	if os.Getenv("env") == "test" {
 		db = sqlite.GetTestDB()
 	} else {
 		db = mysql.GetDB()
 	}
+
 	models.AutoMigrate(db)
 	servicesInit(db, mq, rdb)
 

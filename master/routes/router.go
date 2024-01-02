@@ -39,6 +39,8 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	{
 		a.GET("/:id", account.GetAccountByID)
 		a.GET("/user/:userid", account.GetAccountByUserID)
+		a.POST("", account.CreateAccount)
+		a.DELETE("", account.DeleteAccount)
 	}
 
 	return r

@@ -15,6 +15,96 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/account": {
+            "post": {
+                "description": "Create Account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Create Account",
+                "parameters": [
+                    {
+                        "description": "Account",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Account"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with account data",
+                        "schema": {
+                            "$ref": "#/definitions/account.accountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete Account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Delete Account",
+                "parameters": [
+                    {
+                        "description": "Account",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Account"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with account data",
+                        "schema": {
+                            "$ref": "#/definitions/account.accountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request with error message",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/account/user/{id}": {
             "get": {
                 "description": "Get Account by User ID",
@@ -536,6 +626,21 @@ const docTemplate = `{
                 }
             }
         },
+        "models.AccountInfo": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "description": "MD5 hash",
+                    "type": "string"
+                },
+                "server": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Fleet": {
             "type": "object",
             "properties": {
@@ -564,6 +669,9 @@ const docTemplate = `{
             "properties": {
                 "accountID": {
                     "type": "integer"
+                },
+                "accountInfo": {
+                    "$ref": "#/definitions/models.AccountInfo"
                 },
                 "createdAt": {
                     "type": "string"
@@ -624,6 +732,10 @@ const docTemplate = `{
                 },
                 "solar": {
                     "type": "integer"
+                },
+                "star_id": {
+                    "description": "For node use enemy will be empty",
+                    "type": "integer"
                 }
             }
         },
@@ -651,6 +763,10 @@ const docTemplate = `{
                 "password": {
                     "description": "WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!\nNOTE: Checked in db, DO api check",
                     "type": "string"
+                },
+                "role": {
+                    "description": "0: normal user, 1: admin",
+                    "type": "integer"
                 },
                 "updatedAt": {
                     "type": "string"

@@ -86,6 +86,16 @@ definitions:
       username:
         type: string
     type: object
+  models.AccountInfo:
+    properties:
+      password:
+        description: MD5 hash
+        type: string
+      server:
+        type: string
+      username:
+        type: string
+    type: object
   models.Fleet:
     properties:
       createdAt:
@@ -105,6 +115,8 @@ definitions:
     properties:
       accountID:
         type: integer
+      accountInfo:
+        $ref: '#/definitions/models.AccountInfo'
       createdAt:
         type: string
       deletedAt:
@@ -145,6 +157,9 @@ definitions:
         type: integer
       solar:
         type: integer
+      star_id:
+        description: For node use enemy will be empty
+        type: integer
     type: object
   models.User:
     properties:
@@ -165,6 +180,9 @@ definitions:
           WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!
           NOTE: Checked in db, DO api check
         type: string
+      role:
+        description: '0: normal user, 1: admin'
+        type: integer
       updatedAt:
         type: string
       username:
@@ -219,6 +237,65 @@ definitions:
 info:
   contact: {}
 paths:
+  /account:
+    delete:
+      consumes:
+      - application/json
+      description: Delete Account
+      parameters:
+      - description: Account
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/models.Account'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with account data
+          schema:
+            $ref: '#/definitions/account.accountResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete Account
+      tags:
+      - account
+    post:
+      consumes:
+      - application/json
+      description: Create Account
+      parameters:
+      - description: Account
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/models.Account'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with account data
+          schema:
+            $ref: '#/definitions/account.accountResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create Account
+      tags:
+      - account
   /account/{id}:
     get:
       consumes:

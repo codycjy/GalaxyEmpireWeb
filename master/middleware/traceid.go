@@ -5,6 +5,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// TraceIDMiddleware godoc
+// Create middleware to add traceID
 func TraceIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uuid := uuid.New().String()
