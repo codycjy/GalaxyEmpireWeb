@@ -15,7 +15,7 @@ export function userLogin (loginData) {
 export function userRegister (registerData) {
   return request({
     method: 'POST',
-    url: '/user/register?apifoxResponseId=372997806',
+    url: '/user/register',
     data: {
       account: registerData.account,
       pwd: aes.encrypt(registerData.pwd)
