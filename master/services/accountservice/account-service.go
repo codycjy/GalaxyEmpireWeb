@@ -4,7 +4,6 @@ import (
 	"GalaxyEmpireWeb/consts"
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
-	"GalaxyEmpireWeb/services/userservice"
 	"GalaxyEmpireWeb/utils"
 	"context"
 	"errors"
@@ -71,7 +70,11 @@ func (service *accountService) GetById(ctx context.Context, id uint, fields []st
 		log.Info("[service]Get Account By ID - Not allowed",
 			zap.String("traceID", traceID),
 		)
-
+		return nil,utils.NewServiceError(
+			401,
+			"Get Account By ID Not allowed",
+			nil,
+		)
 	}
 	var account models.Account
 	cur := service.DB
@@ -96,9 +99,9 @@ func (service *accountService) GetByUserId(ctx context.Context,
 		zap.Strings("fields", fields),
 		zap.String("traceID", traceID),
 	)
-	userservice, _ := userservice.GetService(ctx)
-	fields = append(fields, "Accounts")
-	user, err := userservice.GetById(ctx, userId, fields)
+	var accounts* []models.Account
+	result := service.DB.Model(&accounts).Where("user_id = ?", userId).Find(accounts)
+	err := result.Error
 
 	if err != nil {
 		log.Error("[service]Get Account By User ID failed",
@@ -106,15 +109,15 @@ func (service *accountService) GetByUserId(ctx context.Context,
 			zap.Error(err),
 		)
 		if err == gorm.ErrRecordNotFound {
-			return nil, utils.NewServiceError(404, "Record Not found", err)
+			return nil, utils.NewServiceError(404, "Record Not found(SQL)", err)
 
 		}
-		return nil, utils.NewServiceError(500, "Service Error", err)
+		return nil, utils.NewServiceError(500, "SQL Service Error", err)
 	}
-	return &user.Accounts, nil
+	return accounts, nil
 }
 
-func (service *accountService) Create(ctx context.Context, account *models.Account) error {
+func (service *accountService) Create(ctx context.Context, account *models.Account) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	userID := ctx.Value("userID").(uint)
 	log.Info("[service]Create Account ",
@@ -130,7 +133,7 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 			zap.Uint("userId", userID),
 			zap.Error(err),
 		)
-		return err
+		return utils.NewServiceError(500, "failed create account",err)
 	}
 	return nil
 }
@@ -152,7 +155,7 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 			zap.String("traceID", traceID),
 		)
 		return utils.NewServiceError(
-			consts.ErrForbidden,
+			401,
 			"Update Account Not allowed",
 			nil,
 		)
@@ -167,7 +170,7 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 		return err
 	}
 	return nil
-}
+} 
 
 func (service *accountService) Delete(ctx context.Context, ID uint) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
