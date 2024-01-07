@@ -66,9 +66,10 @@ func (service *userService) Create(ctx context.Context, user *models.User) error
 		log.Error("[service]Create user failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
-		)
+		)		
+		return utils.NewServiceError(500, "failed create account",err)
 	}
-	return err
+	return nil
 }
 func (service *userService) Update(ctx context.Context, user *models.User) error {
 	traceID := utils.TraceIDFromContext(ctx)
@@ -81,7 +82,7 @@ func (service *userService) Update(ctx context.Context, user *models.User) error
 		log.Info("[service]Get Update By ID - Not allowed",
 			zap.String("traceID", traceID),
 		)
-		return nil // Error TODO!
+		return utils.NewServiceError(401,"Update User Not allowed",nil)
 
 	}
 	err := service.DB.Save(user).Error
@@ -90,21 +91,27 @@ func (service *userService) Update(ctx context.Context, user *models.User) error
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
+		if err == gorm.ErrRecordNotFound{
+			return utils.NewServiceError(404,"Record Not found(Update User)",err)
+		}
+		return utils.NewServiceError(500,"Failed to Update User",err)
+
 	}
-	return err
+	return nil
 }
 
-func (service *userService) Delete(ctx context.Context, id uint) error {
+func (service *userService) Delete(ctx context.Context, id uint) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]Delete user", zap.String("traceID", traceID), zap.Uint("id", id))
 	result := service.DB.Delete(&models.User{}, id)
-	if result.Error != nil {
+	err := result.Error
+	if err != nil {
 		log.Error("[service]Delete user failed", zap.String("traceID", traceID), zap.Error(result.Error))
-		return result.Error
+		return utils.NewServiceError(500,"failed to delete user",err)
 	}
 	if result.RowsAffected == 0 {
 		log.Warn("[service]Delete user failed - user not found")
-		return fmt.Errorf("no user found with id %d", id)
+		return utils.NewServiceError(404,"User not found",nil)
 	}
 	return nil
 }
@@ -121,8 +128,12 @@ func (service *userService) GetAllUsers(ctx context.Context) ([]*models.User, er
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
+		if err == gorm.ErrRecordNotFound{
+			return nil,utils.NewServiceError(404,"Record Not Found(All User)",err)
+		} 
+		return nil, utils.NewServiceError(500, "Failed To Find All User", err)
 	}
-	return users, err
+	return users, nil
 }
 
 func (service *userService) GetById(ctx context.Context, id uint, fields []string) (*models.User, error) {
@@ -142,9 +153,14 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
+		if err == gorm.ErrRecordNotFound{
+			return nil,utils.NewServiceError(404,"Record Not Found(Find User By ID)",err)
+		}
+		return nil, utils.NewServiceError(500, "Failed To Find User By ID", err)
 	}
-	return &user, err
+	return &user, nil
 }
+
 func (service *userService) UpdateBalance(ctx context.Context, user *models.User) error {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]UpdateBalance",
@@ -160,8 +176,8 @@ func (service *userService) UpdateBalance(ctx context.Context, user *models.User
 	if result.RowsAffected == 0 {
 		log.Warn("[service]Update balance failed - record not found",
 			zap.String("traceID", traceID),
-		)
-		return gorm.ErrRecordNotFound
+		)	
+		return utils.NewServiceError(404,"User not found(UpdateBalance)",nil)
 	}
 
 	if result.Error != nil {
@@ -169,9 +185,9 @@ func (service *userService) UpdateBalance(ctx context.Context, user *models.User
 			zap.String("traceID", traceID),
 			zap.Error(result.Error),
 		)
+		return utils.NewServiceError(500,"Failed to Update Balance",result.Error)
 	}
-
-	return result.Error
+	return nil
 }
 
 func (service *userService) GetUserRole(ctx context.Context, userID uint) int {

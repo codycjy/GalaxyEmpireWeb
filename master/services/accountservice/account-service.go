@@ -186,6 +186,9 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 		return serviceErr
 	}
 	if !allowed {
+		log.Info("[service]Delete Account Info - Not allowed",
+			zap.String("traceID",traceID),
+		)
 		return utils.NewServiceError(http.StatusUnauthorized, "User has no Permission", nil)
 	}
 
