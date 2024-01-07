@@ -4,6 +4,7 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
+	"GalaxyEmpireWeb/utils"
 	"encoding/json"
 
 	"github.com/streadway/amqp"
@@ -75,16 +76,22 @@ func (s *taskService) sendMessage(message string, queue string) error {
 			ContentType: "text/plain",
 			Body:        []byte(message),
 		})
-	return err
+	if err != nil{
+		return utils.NewServiceError(500,"Failed to send message",err)
+	}
+	return nil
 }
 
 func (s *taskService) SendTask(task models.Task) error {
 	queue := task.QueueName()
 	jsonStr, err := json.Marshal(task)
 	if err != nil {
-		return err
+		return utils.NewServiceError(500,"failed to encode task to JSON",err)
 	}
 	err = s.sendMessage(string(jsonStr), queue)
+	if err != nil{
+		return utils.NewServiceError(500,"Failed to send message",err)
+	}
 	return nil
 }
 func (s *taskService) ConsumeResponseQueue() {

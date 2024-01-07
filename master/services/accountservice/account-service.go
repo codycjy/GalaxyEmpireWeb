@@ -167,7 +167,10 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		return err
+		if err == gorm.ErrRecordNotFound{
+			return utils.NewServiceError(404,"Record Not found(Update Account)",err)
+		}
+		return utils.NewServiceError(500,"Failed to Update Account",err)
 	}
 	return nil
 } 
