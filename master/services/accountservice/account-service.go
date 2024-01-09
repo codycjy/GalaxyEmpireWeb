@@ -54,7 +54,7 @@ func GetService(ctx context.Context) (*accountService, error) {
 	return accountServiceInstance, nil
 }
 
-func (service *accountService) GetById(ctx context.Context, id uint, fields []string) (*models.Account, error) {
+func (service *accountService) GetById(ctx context.Context, id uint, fields []string) (*models.Account, *utils.ServiceError) {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]Get Account By ID",
 		zap.Uint("id", id),
@@ -71,8 +71,8 @@ func (service *accountService) GetById(ctx context.Context, id uint, fields []st
 			zap.String("traceID", traceID),
 		)
 		return nil,utils.NewServiceError(
-			401,
-			"Get Account By ID Not allowed",
+			http.StatusUnauthorized,
+			"Account Not allowed",
 			nil,
 		)
 	}
@@ -87,8 +87,12 @@ func (service *accountService) GetById(ctx context.Context, id uint, fields []st
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
+		if err == gorm.ErrRecordNotFound {
+			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
+		}
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "SQL Server Error", err)
 	}
-	return &account, err
+	return &account, nil
 }
 
 func (service *accountService) GetByUserId(ctx context.Context,
@@ -109,10 +113,10 @@ func (service *accountService) GetByUserId(ctx context.Context,
 			zap.Error(err),
 		)
 		if err == gorm.ErrRecordNotFound {
-			return nil, utils.NewServiceError(404, "Record Not found(SQL)", err)
+			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
 
 		}
-		return nil, utils.NewServiceError(500, "SQL Service Error", err)
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "SQL Service Error", err)
 	}
 	return accounts, nil
 }
@@ -133,12 +137,12 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 			zap.Uint("userId", userID),
 			zap.Error(err),
 		)
-		return utils.NewServiceError(500, "failed create account",err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed create account",err)
 	}
 	return nil
 }
 
-func (service *accountService) Update(ctx context.Context, account *models.Account) error {
+func (service *accountService) Update(ctx context.Context, account *models.Account) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]Update Account Info",
 		zap.Uint("accountID", account.ID),
@@ -155,8 +159,8 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 			zap.String("traceID", traceID),
 		)
 		return utils.NewServiceError(
-			401,
-			"Update Account Not allowed",
+			http.StatusUnauthorized,
+			"Account Not allowed",
 			nil,
 		)
 	}
@@ -168,9 +172,9 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 			zap.Error(err),
 		)
 		if err == gorm.ErrRecordNotFound{
-			return utils.NewServiceError(404,"Record Not found(Update Account)",err)
+			return utils.NewServiceError(http.StatusNotFound,"Account Not found",err)
 		}
-		return utils.NewServiceError(500,"Failed to Update Account",err)
+		return utils.NewServiceError(http.StatusInternalServerError,"Failed to Update Account",err)
 	}
 	return nil
 } 
@@ -205,7 +209,7 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 		log.Warn("[server]Delete Account failed - no such user",
 			zap.String("traceID", traceID),
 		)
-		return utils.NewServiceError(http.StatusNotFound, "User not found", nil)
+		return utils.NewServiceError(http.StatusNotFound, "Account not found", nil)
 	}
 	return nil
 
