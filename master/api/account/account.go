@@ -62,12 +62,12 @@ func GetAccountByID(c *gin.Context) {
 		})
 	}
 
-	account, err := accountService.GetById(c, uint(id), []string{})
-	if err != nil {
-		c.JSON(http.StatusNotFound, api.ErrorResponse{
+	account, serviceErr := accountService.GetById(c, uint(id), []string{})
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Account not found",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -155,16 +155,16 @@ func CreateAccount(c *gin.Context) {
 		)
 	}
 	accountService, _ := accountservice.GetService(c)
-	err = accountService.Create(c, &account)
-	if err != nil {
+	serviceErr := accountService.Create(c, &account)
+	if serviceErr != nil {
 		log.Error("[api]Create Account failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Create Account Failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -202,7 +202,7 @@ func DeleteAccount(c *gin.Context) {
 	}
 	accountService, _ := accountservice.GetService(c)
 	serviceErr := accountService.Delete(c, account.ID)
-	if err != nil {
+	if serviceErr != nil {
 		log.Error("[api]Delete Account failed",
 			zap.String("traceID", traceID),
 			zap.Uint("accountID", account.ID),

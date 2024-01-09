@@ -58,12 +58,12 @@ func GetUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	user, err := userService.GetById(c, uint(id), []string{})
-	if err != nil {
-		c.JSON(http.StatusNotFound, api.ErrorResponse{
+	user, serviceErr := userService.GetById(c, uint(id), []string{})
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "User not found",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -98,17 +98,17 @@ func GetUsers(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	users, err := userService.GetAllUsers(c)
+	users, serviceErr := userService.GetAllUsers(c)
 	usersDTO := make([]models.UserDTO, len(users))
 	for _, user := range users {
 		usersDTO = append(usersDTO, *user.ToDTO())
 	}
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Failed to get users",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -157,13 +157,12 @@ func CreateUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	err = userService.Create(c, user)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	serviceErr := userService.Create(c, user)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Create user failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -212,13 +211,13 @@ func UpdateUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	err = userService.Update(c, user)
+	serviceErr := userService.Update(c, user)
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Update user failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -261,13 +260,12 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	userService, err := userservice.GetService(c)
-	err = userService.Delete(c, user.ID)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	serviceErr := userService.Delete(c, user.ID)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Delete user failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
