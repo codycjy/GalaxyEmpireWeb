@@ -205,6 +205,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/captcha": {
+            "get": {
+                "description": "Get captcha",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Captcha"
+                ],
+                "summary": "Get captcha",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.captchaResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/ping": {
             "get": {
                 "description": "do ping",
@@ -528,6 +551,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "message": {
+                    "type": "string"
+                },
+                "succeed": {
+                    "type": "boolean"
+                },
+                "traceID": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.captchaResponse": {
+            "type": "object",
+            "properties": {
+                "captcha_id": {
                     "type": "string"
                 },
                 "succeed": {
