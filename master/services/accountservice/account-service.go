@@ -70,7 +70,7 @@ func (service *accountService) GetById(ctx context.Context, id uint, fields []st
 		log.Info("[service]Get Account By ID - Not allowed",
 			zap.String("traceID", traceID),
 		)
-		return nil,utils.NewServiceError(
+		return nil, utils.NewServiceError(
 			http.StatusUnauthorized,
 			"Account Not allowed",
 			nil,
@@ -87,7 +87,7 @@ func (service *accountService) GetById(ctx context.Context, id uint, fields []st
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
 		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "SQL Server Error", err)
@@ -103,22 +103,24 @@ func (service *accountService) GetByUserId(ctx context.Context,
 		zap.Strings("fields", fields),
 		zap.String("traceID", traceID),
 	)
-	var accounts* []models.Account
-	result := service.DB.Model(&accounts).Where("user_id = ?", userId).Find(accounts)
+	var accounts []models.Account
+	result := service.DB.Model(&models.Account{}).Where("user_id = ?", userId).Find(&accounts)
 	err := result.Error
-
+	if result.RowsAffected == 0 {
+		return &accounts, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
+	}
 	if err != nil {
 		log.Error("[service]Get Account By User ID failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
 
 		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "SQL Service Error", err)
 	}
-	return accounts, nil
+	return &accounts, nil
 }
 
 func (service *accountService) Create(ctx context.Context, account *models.Account) *utils.ServiceError {
@@ -137,7 +139,7 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 			zap.Uint("userId", userID),
 			zap.Error(err),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError, "failed create account",err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed create account", err)
 	}
 	return nil
 }
@@ -171,13 +173,13 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound{
-			return utils.NewServiceError(http.StatusNotFound,"Account Not found",err)
+		if err == gorm.ErrRecordNotFound {
+			return utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
 		}
-		return utils.NewServiceError(http.StatusInternalServerError,"Failed to Update Account",err)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to Update Account", err)
 	}
 	return nil
-} 
+}
 
 func (service *accountService) Delete(ctx context.Context, ID uint) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
@@ -191,13 +193,15 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 	}
 	if !allowed {
 		log.Info("[service]Delete Account Info - Not allowed",
-			zap.String("traceID",traceID),
+			zap.String("traceID", traceID),
 		)
 		return utils.NewServiceError(http.StatusUnauthorized, "User has no Permission", nil)
 	}
-
 	result := service.DB.Delete(&models.Account{}, ID)
 	err := result.Error
+	if result.RowsAffected == 0 {
+		return utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
+	}
 	if err != nil {
 		log.Info("[service]Delete Account failed",
 			zap.String("traceID", traceID),
@@ -217,13 +221,25 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 
 func (service *accountService) isUserAllowed(ctx context.Context, accountID uint) (bool, *utils.ServiceError) {
 	traceID := utils.TraceIDFromContext(ctx)
-	userID := ctx.Value("userID").(uint)
+	userID1 := ctx.Value("userID")
+	if userID1 == nil {
+		log.Warn("[service]Check User Permission - No userID in context",
+			zap.String("traceID", traceID),
+		)
+		return false, utils.NewServiceError(http.StatusInternalServerError, "No userID in context", nil)
+	}
+	userID := userID1.(uint)
 	log.Info("[service]Check User Permission",
 		zap.Uint("userID", userID),
 		zap.Uint("accountID", accountID),
 		zap.String("traceID", traceID),
 	)
-
+	if userID == 0 {
+		log.Warn("[service]Check User Permission - No userID in context",
+			zap.String("traceID", traceID),
+		)
+		return false, utils.NewServiceError(http.StatusInternalServerError, "No userID in context", nil)
+	}
 	key := fmt.Sprintf("%s%d", accountListPrefix, userID)
 
 	// 首先检查键是否存在
@@ -257,8 +273,17 @@ func (service *accountService) isUserAllowed(ctx context.Context, accountID uint
 
 	// 如果键存在，检查集合中是否包含特定元素
 	isMember, err := service.RDB.SIsMember(ctx, key, accountID).Result()
-	if err != nil {
-		log.Error("[service]Check User Permission - failed",
+	if !isMember {
+		if err != nil {
+			log.Error("[service]Check User Permission - failed（1）",
+				zap.String("traceID", traceID),
+				zap.String("redis_key", key),
+				zap.Error(err),
+			)
+			return false, utils.NewServiceError(http.StatusInternalServerError, "redis retrieve error", err)
+		}
+		err = errors.New("redis retrieve error not this id")
+		log.Error("[service]Check User Permission - failed（2）",
 			zap.String("traceID", traceID),
 			zap.String("redis_key", key),
 			zap.Error(err),
