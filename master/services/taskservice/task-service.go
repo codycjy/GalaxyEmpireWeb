@@ -77,8 +77,8 @@ func (s *taskService) sendMessage(message string, queue string) *utils.ServiceEr
 			ContentType: "text/plain",
 			Body:        []byte(message),
 		})
-	if err != nil{
-		return utils.NewServiceError(http.StatusInternalServerError,"Failed to send message",err)
+	if err != nil {
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
 	}
 	return nil
 }
@@ -87,11 +87,11 @@ func (s *taskService) SendTask(task models.Task) *utils.ServiceError {
 	queue := task.QueueName()
 	jsonStr, err := json.Marshal(task)
 	if err != nil {
-		return utils.NewServiceError(http.StatusInternalServerError,"failed to encode task to JSON",err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to encode task to JSON", err)
 	}
 	err = s.sendMessage(string(jsonStr), queue)
-	if err != nil{
-		return utils.NewServiceError(http.StatusInternalServerError,"Failed to send message",err)
+	if err != nil {
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
 	}
 	return nil
 }
