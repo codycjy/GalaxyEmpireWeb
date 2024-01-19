@@ -19,7 +19,8 @@ func NewRedisCaptchaStore(rdb *redis.Client, expire time.Duration) *redisCaptcha
 	return &redisCaptchaStore{
 		expire: expire,
 		rdb:    rdb,
-		ctx:    utils.NewContextWithTraceID(),
+		ctx:    utils.NewContextWithTraceID(), 
+		// WARNING: all captcha will use same traceID
 	}
 }
 

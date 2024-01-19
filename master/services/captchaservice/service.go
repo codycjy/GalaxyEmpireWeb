@@ -22,9 +22,11 @@ func NewCaptchaService(rdb *redis.Client) *CaptchaService {
 	store := NewRedisCaptchaStore(rdb, 10*time.Minute)
 	return &CaptchaService{store: store}
 }
+
 func InitCaptchaService(rdb *redis.Client) {
 	captchaService = NewCaptchaService(rdb)
 }
+
 func GetCaptchaService() *CaptchaService {
 	if captchaService == nil {
 		log.DPanic("captchaService is nil")
@@ -48,3 +50,4 @@ func (s *CaptchaService) VerifyCaptcha(ctx context.Context, captchaID, userInput
 	log.Info("[service]VerifyCaptcha", zap.String("traceID", traceID), zap.Bool("result", result))
 	return result
 }
+

@@ -194,7 +194,7 @@
                 }
             }
         },
-        "/api/captcha": {
+        "/captcha": {
             "get": {
                 "description": "Get captcha",
                 "consumes": [
@@ -212,6 +212,51 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.captchaResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/captcha/{captchaID}": {
+            "get": {
+                "description": "Generate captcha picture",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "image/png",
+                    "application/json"
+                ],
+                "tags": [
+                    "Captcha"
+                ],
+                "summary": "Generate captcha picture",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "captchaID",
+                        "name": "captchaID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A captcha image is returned on success",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "If an error occurs, a JSON with error details is returned",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "If an error occurs, a JSON with error details is returned",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
