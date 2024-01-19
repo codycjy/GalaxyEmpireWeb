@@ -72,6 +72,10 @@ func TestUserService_GetById(t *testing.T) {
 
 			InitService(tx, rdb)
 			service, err := GetService(ctx)
+			if err != nil {
+				t.Errorf("UserService.GetById() error = %v", err)
+				return
+			}
 			// 设置测试数据
 			testUser := tt.setup(tx)
 
@@ -80,9 +84,9 @@ func TestUserService_GetById(t *testing.T) {
 				id = testUser.ID
 			}
 
-			got, err := service.GetById(ctx, id, tt.args.fields)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("UserService.GetById() error = %v, wantErr %v", err, tt.wantErr)
+			got, _ := service.GetById(ctx, id, tt.args.fields)
+			if _, err1 := service.GetById(ctx, id, tt.args.fields); (err1 != nil) != tt.wantErr {
+				t.Errorf("UserService.GetById() error = %v, wantErr %v", err1, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && (got.Username != testUser.Username || got.Password != testUser.Password || got.Balance != testUser.Balance) {

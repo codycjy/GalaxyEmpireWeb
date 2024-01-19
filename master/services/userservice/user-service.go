@@ -67,8 +67,8 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 		log.Error("[service]Create user failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
-		)		
-		return utils.NewServiceError(http.StatusInternalServerError, "failed create account",err)
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed create account", err)
 	}
 	return nil
 }
@@ -83,7 +83,7 @@ func (service *userService) Update(ctx context.Context, user *models.User) *util
 		log.Info("[service]Get Update By ID - Not allowed",
 			zap.String("traceID", traceID),
 		)
-		return utils.NewServiceError(http.StatusUnauthorized,"User Not allowed",nil)
+		return utils.NewServiceError(http.StatusUnauthorized, "User Not allowed", nil)
 
 	}
 	err := service.DB.Save(user).Error
@@ -92,10 +92,10 @@ func (service *userService) Update(ctx context.Context, user *models.User) *util
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound{
-			return utils.NewServiceError(http.StatusNotFound,"User Not Found",err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return utils.NewServiceError(http.StatusNotFound, "User Not Found", err)
 		}
-		return utils.NewServiceError(http.StatusInternalServerError,"Failed to Update User",err)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to Update User", err)
 
 	}
 	return nil
@@ -108,11 +108,11 @@ func (service *userService) Delete(ctx context.Context, id uint) *utils.ServiceE
 	err := result.Error
 	if err != nil {
 		log.Error("[service]Delete user failed", zap.String("traceID", traceID), zap.Error(result.Error))
-		return utils.NewServiceError(http.StatusInternalServerError,"failed to delete user",err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to delete user", err)
 	}
 	if result.RowsAffected == 0 {
 		log.Warn("[service]Delete user failed - user not found")
-		return utils.NewServiceError(http.StatusNotFound,"User Not Found",nil)
+		return utils.NewServiceError(http.StatusNotFound, "User Not Found", nil)
 	}
 	return nil
 }
@@ -129,9 +129,9 @@ func (service *userService) GetAllUsers(ctx context.Context) ([]*models.User, *u
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound{
-			return nil,utils.NewServiceError(http.StatusNotFound,"User Not Found",err)
-		} 
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, utils.NewServiceError(http.StatusNotFound, "User Not Found", err)
+		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed To Find All User", err)
 	}
 	return users, nil
@@ -154,8 +154,8 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound{
-			return nil,utils.NewServiceError(http.StatusNotFound,"User Not Found",err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, utils.NewServiceError(http.StatusNotFound, "User Not Found", err)
 		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed To Find User By ID", err)
 	}
@@ -177,8 +177,8 @@ func (service *userService) UpdateBalance(ctx context.Context, user *models.User
 	if result.RowsAffected == 0 {
 		log.Warn("[service]Update balance failed - record not found",
 			zap.String("traceID", traceID),
-		)	
-		return utils.NewServiceError(http.StatusNotFound,"User Not Found",nil)
+		)
+		return utils.NewServiceError(http.StatusNotFound, "User Not Found", nil)
 	}
 
 	if result.Error != nil {
@@ -186,7 +186,7 @@ func (service *userService) UpdateBalance(ctx context.Context, user *models.User
 			zap.String("traceID", traceID),
 			zap.Error(result.Error),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError,"Failed to Update Balance",result.Error)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to Update Balance", result.Error)
 	}
 	return nil
 }
