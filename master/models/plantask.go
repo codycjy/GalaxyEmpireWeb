@@ -1,6 +1,7 @@
 package models
 
 import (
+	"log"
 	"os"
 )
 
@@ -19,4 +20,18 @@ func (t *PlanTask) QueueName() string {
 }
 func (t *PlanTask) TaskType() string {
 	return "DailyTask"
+}
+func (planTask *PlanTask) SetAccountInfo(account AccountInfo) {
+	// TODO: implement
+	log.Fatal()
+}
+func (planTask *PlanTask) GetAccountID() uint {
+	// TODO: implement
+	log.Fatal()
+	return 0
+}
+func (planTask *PlanTask) GetID() uint {
+	// TODO: implement
+	log.Fatal()
+	return 0
 }

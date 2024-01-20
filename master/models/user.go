@@ -11,6 +11,7 @@ type User struct {
 	// NOTE: Checked in db, DO api check
 	Password string `gorm:"not null"`
 	Balance  int
+	Role     int       // 0: normal user, 1: admin
 	Accounts []Account `gorm:"foreignKey:UserID"`
 }
 

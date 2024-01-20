@@ -7,8 +7,6 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/userservice"
-	"GalaxyEmpireWeb/utils"
-	"context"
 	"net/http"
 	"strconv"
 
@@ -51,8 +49,7 @@ func GetUser(c *gin.Context) {
 		})
 		return
 	}
-	ctx := utils.NewContext(traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c) //TODO: remove error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -61,12 +58,12 @@ func GetUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	user, err := userService.GetById(ctx, uint(id), []string{})
-	if err != nil {
-		c.JSON(http.StatusOK, api.ErrorResponse{
+	user, serviceErr := userService.GetById(c, uint(id), []string{})
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "User not found",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -89,8 +86,7 @@ func GetUser(c *gin.Context) {
 // @Router /users [get]
 func GetUsers(c *gin.Context) {
 	traceID := c.GetString("traceID")
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c)
 	if err != nil {
 		log.Error("[api]User service not initialized",
 			zap.String("traceID", traceID),
@@ -102,17 +98,17 @@ func GetUsers(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	users, err := userService.GetAllUsers(ctx)
+	users, serviceErr := userService.GetAllUsers(c)
 	usersDTO := make([]models.UserDTO, len(users))
 	for _, user := range users {
 		usersDTO = append(usersDTO, *user.ToDTO())
 	}
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Failed to get users",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -152,8 +148,7 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -162,13 +157,12 @@ func CreateUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	err = userService.Create(ctx, user)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	serviceErr := userService.Create(c, user)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Create user failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -208,8 +202,7 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
+	userService, err := userservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
@@ -218,13 +211,13 @@ func UpdateUser(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	err = userService.Update(ctx, user)
+	serviceErr := userService.Update(c, user)
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Update user failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return
@@ -266,15 +259,13 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	ctx := context.WithValue(context.Background(), "traceID", traceID)
-	userService, err := userservice.GetService(ctx)
-	err = userService.Delete(ctx, user.ID)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	userService, err := userservice.GetService(c)
+	serviceErr := userService.Delete(c, user.ID)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "Delete user failed",
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 			TraceID: traceID,
 		})
 		return

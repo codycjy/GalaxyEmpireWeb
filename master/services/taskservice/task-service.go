@@ -4,7 +4,9 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
+	"GalaxyEmpireWeb/utils"
 	"encoding/json"
+	"net/http"
 
 	"github.com/streadway/amqp"
 	"go.uber.org/zap"
@@ -32,7 +34,7 @@ func InitService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
 	}
 
 	taskGenerator := initTaskGenerator(db, mq, taskServiceInstance)
-	go taskGenerator.FindTasks()
+	go taskGenerator.FindAllTasks()
 
 	return taskServiceInstance
 }
@@ -65,7 +67,7 @@ func (s *taskService) SetupQueue(queue []string) {
 
 }
 
-func (s *taskService) sendMessage(message string, queue string) error {
+func (s *taskService) sendMessage(message string, queue string) *utils.ServiceError {
 	err := s.MQ.Channel.Publish(
 		"",    // 交换机
 		queue, // 队列名称
@@ -75,16 +77,22 @@ func (s *taskService) sendMessage(message string, queue string) error {
 			ContentType: "text/plain",
 			Body:        []byte(message),
 		})
-	return err
+	if err != nil {
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
+	}
+	return nil
 }
 
-func (s *taskService) SendTask(task models.Task) error {
+func (s *taskService) SendTask(task models.Task) *utils.ServiceError {
 	queue := task.QueueName()
 	jsonStr, err := json.Marshal(task)
 	if err != nil {
-		return err
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to encode task to JSON", err)
 	}
 	err = s.sendMessage(string(jsonStr), queue)
+	if err != nil {
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
+	}
 	return nil
 }
 func (s *taskService) ConsumeResponseQueue() {

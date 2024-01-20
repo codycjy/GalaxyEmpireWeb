@@ -31,6 +31,9 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v4
 
+    - name: actions-setup-redis
+      uses: shogo82148/actions-setup-redis@v1.32.0
+
     - name: Set up Go
       uses: actions/setup-go@v4
       with:

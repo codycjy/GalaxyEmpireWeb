@@ -2,8 +2,10 @@ package userservice
 
 import (
 	"GalaxyEmpireWeb/models"
+	"GalaxyEmpireWeb/repositories/redis"
 	"GalaxyEmpireWeb/repositories/sqlite"
 	"GalaxyEmpireWeb/utils"
+	"context"
 	"testing"
 
 	"gorm.io/gorm"
@@ -58,6 +60,7 @@ func TestUserService_GetById(t *testing.T) {
 			wantErr: true,
 		},
 	}
+	rdb := redis.GetRedisDB()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// 启动事务
@@ -67,8 +70,12 @@ func TestUserService_GetById(t *testing.T) {
 				tx.Rollback()
 			}()
 
-			InitService(tx)
+			InitService(tx, rdb)
 			service, err := GetService(ctx)
+			if err != nil {
+				t.Errorf("UserService.GetById() error = %v", err)
+				return
+			}
 			// 设置测试数据
 			testUser := tt.setup(tx)
 
@@ -77,9 +84,9 @@ func TestUserService_GetById(t *testing.T) {
 				id = testUser.ID
 			}
 
-			got, err := service.GetById(ctx, id, tt.args.fields)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("UserService.GetById() error = %v, wantErr %v", err, tt.wantErr)
+			got, err1 := service.GetById(ctx, id, tt.args.fields)
+			if (err1 != nil) != tt.wantErr {
+				t.Errorf("UserService.GetById() error = %v, wantErr %v", err1, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && (got.Username != testUser.Username || got.Password != testUser.Password || got.Balance != testUser.Balance) {
@@ -92,6 +99,8 @@ func TestUserService_GetById(t *testing.T) {
 
 func TestUserService_Create(t *testing.T) {
 	ctx := utils.NewContextWithTraceID()
+	ctx = context.WithValue(ctx, "userID", uint(1))
+	ctx = context.WithValue(ctx, "role", uint(1))
 	type fields struct {
 		DB *gorm.DB
 	}
@@ -160,7 +169,7 @@ func TestUserService_Create(t *testing.T) {
 			// 设置测试环境
 			setup(tx)
 
-			service := &UserService{
+			service := &userService{
 				DB: tx,
 			}
 			if err := service.Create(ctx, tt.args.user); (err != nil) != tt.wantErr {
@@ -184,6 +193,8 @@ func TestUserService_Create(t *testing.T) {
 
 func TestUserService_Update(t *testing.T) {
 	ctx := utils.NewContextWithTraceID()
+	ctx = context.WithValue(ctx, "userID", uint(1)) // TODO: add to case
+	ctx = context.WithValue(ctx, "role", 1)
 	db := sqlite.GetTestDB()
 	db.AutoMigrate(&models.User{}) // Create User table
 
@@ -224,6 +235,7 @@ func TestUserService_Update(t *testing.T) {
 			wantErr: false,
 		},
 	}
+	rdb := redis.GetRedisDB()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Start a new transaction
@@ -234,8 +246,9 @@ func TestUserService_Update(t *testing.T) {
 				tx.Rollback()
 			}()
 
-			service := &UserService{
-				DB: tx, // Use the transaction as the DB
+			service := &userService{
+				DB:  tx, // Use the transaction as the DB
+				RDB: rdb,
 			}
 			if err := service.Update(ctx, tt.args.user); (err != nil) != tt.wantErr {
 				t.Errorf("UserService.Update() error = %v, wantErr %v", err, tt.wantErr)
@@ -308,7 +321,7 @@ func TestUserService_Delete(t *testing.T) {
 				tt.args.id = tt.setup(tx)
 			}
 
-			service := &UserService{
+			service := &userService{
 				DB: tx,
 			}
 			if err := service.Delete(ctx, tt.args.id); (err != nil) != tt.wantErr {
@@ -376,7 +389,7 @@ func TestUserService_GetAllUsers(t *testing.T) {
 				tx.Create(&user)
 			}
 
-			service := &UserService{
+			service := &userService{
 				DB: tx, // Use the transaction as the DB
 			}
 			gotUsers, err := service.GetAllUsers(ctx)

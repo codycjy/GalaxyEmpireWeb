@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 // UpdateUser godoc
@@ -46,19 +45,12 @@ func UpdateBalance(c *gin.Context) {
 
 		return
 	}
-	err = userservice.UpdateBalance(ctx, user)
-	if err == gorm.ErrRecordNotFound {
-		c.JSON(http.StatusNotFound, api.ErrorResponse{
+	serviceErr := userservice.UpdateBalance(ctx, user)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
-			Error:   err.Error(),
-			Message: "User not found",
-		})
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
 		})
 		return
 	}
