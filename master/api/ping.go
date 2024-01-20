@@ -1,10 +1,16 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	"GalaxyEmpireWeb/logger"
+
+	"github.com/gin-gonic/gin"
+)
 
 type responseMessage struct {
 	Message string `json:"message"`
 }
+
+var log = logger.GetLogger()
 
 // @BasePath /api/v1
 

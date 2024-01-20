@@ -8,6 +8,7 @@ import (
 	"GalaxyEmpireWeb/repositories/sqlite"
 	"GalaxyEmpireWeb/routes"
 	"GalaxyEmpireWeb/services/accountservice"
+	"GalaxyEmpireWeb/services/captchaservice"
 	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/services/userservice"
 	"os"
@@ -26,6 +27,7 @@ func servicesInit(
 	userservice.InitService(db, rdb)
 	accountservice.InitService(db, rdb)
 	taskservice.InitService(db, mq)
+	captchaservice.InitCaptchaService(rdb)
 }
 
 var db *gorm.DB

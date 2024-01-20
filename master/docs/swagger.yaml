@@ -28,6 +28,15 @@ definitions:
       traceID:
         type: string
     type: object
+  api.captchaResponse:
+    properties:
+      captcha_id:
+        type: string
+      succeed:
+        type: boolean
+      traceID:
+        type: string
+    type: object
   api.responseMessage:
     properties:
       message:
@@ -362,6 +371,21 @@ paths:
       summary: Get account by User ID
       tags:
       - account
+  /api/captcha:
+    get:
+      consumes:
+      - application/json
+      description: Get captcha
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.captchaResponse'
+      summary: Get captcha
+      tags:
+      - Captcha
   /ping:
     get:
       consumes:
