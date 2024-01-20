@@ -50,4 +50,3 @@ func (s *CaptchaService) VerifyCaptcha(ctx context.Context, captchaID, userInput
 	log.Info("[service]VerifyCaptcha", zap.String("traceID", traceID), zap.Bool("result", result))
 	return result
 }
-
