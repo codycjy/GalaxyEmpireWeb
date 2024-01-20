@@ -371,7 +371,7 @@ paths:
       summary: Get account by User ID
       tags:
       - account
-  /api/captcha:
+  /captcha:
     get:
       consumes:
       - application/json
@@ -384,6 +384,36 @@ paths:
           schema:
             $ref: '#/definitions/api.captchaResponse'
       summary: Get captcha
+      tags:
+      - Captcha
+  /captcha/{captchaID}:
+    get:
+      consumes:
+      - application/json
+      description: Generate captcha picture
+      parameters:
+      - description: captchaID
+        in: path
+        name: captchaID
+        required: true
+        type: string
+      produces:
+      - image/png
+      - application/json
+      responses:
+        "200":
+          description: A captcha image is returned on success
+          schema:
+            type: file
+        "404":
+          description: If an error occurs, a JSON with error details is returned
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: If an error occurs, a JSON with error details is returned
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate captcha picture
       tags:
       - Captcha
   /ping:
