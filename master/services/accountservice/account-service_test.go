@@ -44,7 +44,7 @@ func Test_accountService_GetById(t *testing.T) {
 				testAccount := &models.Account{
 					Username: "Test Account",
 					Password: "testpassword",
-					Email:    "123@qq.com",
+					Email:    "test@example.com",
 					Server:   "testserver",
 					UserID:   1,
 				}
@@ -197,7 +197,7 @@ func Test_accountService_Create(t *testing.T) {
 		testAccount := &models.Account{
 			Username: "TestUser",
 			Password: "testpassword",
-			Email:    "123@qq.com",
+			Email:    "test@test.com",
 			Server:   "testserver",
 			UserID:   1,
 		}
@@ -220,7 +220,7 @@ func Test_accountService_Create(t *testing.T) {
 				account: &models.Account{
 					Username: "Create Account",
 					Password: "testpassword",
-					Email:    "111@qq.com",
+					Email:    "new@test.com",
 					Server:   "test1",
 					UserID:   1,
 				},
@@ -237,7 +237,7 @@ func Test_accountService_Create(t *testing.T) {
 				account: &models.Account{
 					Username: "TestUser",
 					Password: "testpassword",
-					Email:    "111@qq.com",
+					Email:    "duplicate@test.com",
 					Server:   "testserver",
 					UserID:   1,
 				},
@@ -300,7 +300,7 @@ func Test_accountService_Delete(t *testing.T) {
 				testAccount := &models.Account{
 					Username: "Test Account",
 					Password: "testpassword",
-					Email:    "123@qq.com",
+					Email:    "test@test.com",
 					Server:   "testserver",
 					UserID:   1,
 				}
@@ -374,7 +374,7 @@ func Test_accountService_Update(t *testing.T) {
 				account: &models.Account{
 					Username: "Updated Account",
 					Password: "updatepassword",
-					Email:    "1234@qq.com",
+					Email:    "update@test.com",
 					Server:   "updateserver",
 					UserID:   1,
 				},
@@ -384,7 +384,7 @@ func Test_accountService_Update(t *testing.T) {
 				testAccount := &models.Account{
 					Username: "Updated Account",
 					Password: "testpassword",
-					Email:    "123@qq.com",
+					Email:    "test@test.com",
 					Server:   "updateserver",
 					UserID:   1,
 				}
