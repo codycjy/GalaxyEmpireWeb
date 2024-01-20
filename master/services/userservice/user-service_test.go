@@ -84,10 +84,9 @@ func TestUserService_GetById(t *testing.T) {
 				id = testUser.ID
 			}
 
-			got, err := service.GetById(ctx, id, tt.args.fields)
-			// 这里需要断言不然无法使用这个语句判断是否为nil
-			if (err.(*utils.ServiceError) != nil) != tt.wantErr {
-				t.Errorf("UserService.GetById() error = %v, wantErr %v", err, tt.wantErr)
+			got, err1 := service.GetById(ctx, id, tt.args.fields)
+			if (err1 != nil) != tt.wantErr {
+				t.Errorf("UserService.GetById() error = %v, wantErr %v", err1, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && (got.Username != testUser.Username || got.Password != testUser.Password || got.Balance != testUser.Balance) {
