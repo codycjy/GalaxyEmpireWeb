@@ -3,6 +3,7 @@ package routes
 import (
 	"GalaxyEmpireWeb/api"
 	"GalaxyEmpireWeb/api/account"
+	"GalaxyEmpireWeb/api/auth"
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
 	"GalaxyEmpireWeb/middleware"
@@ -25,14 +26,18 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	v1.GET("/ping", api.Ping)
 	v1.GET("/captcha", api.GetCaptcha)
 	v1.GET("/captcha/:captchaID", api.GeneratePicture)
+	v1.POST("/login", middleware.CpatchaMiddleware(), auth.LoginHandler)
+	v1.POST("/register", middleware.CpatchaMiddleware(), user.CreateUser)
+	v1.Use(middleware.JWTAuthMiddleware())
 	u := v1.Group("/user")
+	u.Use(middleware.AllowedMiddleware())
 	{
 		u.GET("/:id", user.GetUser)
-		u.POST("", user.CreateUser) // TODO: Move to /register without auth
 		u.DELETE("", user.DeleteUser)
 		u.PUT("", user.UpdateUser)
 	}
 	balance := u.Group("/balance")
+	balance.Use(middleware.AllowedMiddleware())
 	{
 		balance.PUT("", user.UpdateBalance)
 	}
