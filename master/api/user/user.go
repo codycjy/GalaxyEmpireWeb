@@ -120,7 +120,7 @@ func GetUsers(c *gin.Context) {
 }
 
 // CreateUser godoc
-// @Summary Crea user
+// @Summary Create user
 // @Description Create User
 // @Tags user
 // @Accept json
@@ -132,7 +132,7 @@ func GetUsers(c *gin.Context) {
 // @Router /user [post]
 func CreateUser(c *gin.Context) {
 	traceID := c.GetString("traceID")
-	var user *models.User
+	user := &models.User{}
 	err := c.BindJSON(user)
 	if err != nil {
 
