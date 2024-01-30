@@ -7,9 +7,9 @@ import (
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
 	"GalaxyEmpireWeb/middleware"
-
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,8 +26,13 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	v1.GET("/ping", api.Ping)
 	v1.GET("/captcha", api.GetCaptcha)
 	v1.GET("/captcha/:captchaID", api.GeneratePicture)
-	v1.POST("/login", middleware.CpatchaMiddleware(), auth.LoginHandler)
-	v1.POST("/register", middleware.CpatchaMiddleware(), user.CreateUser)
+	if os.Getenv("ENV") == "test" {
+		v1.POST("/login", auth.LoginHandler)
+		v1.POST("/register", user.CreateUser)
+	} else {
+		v1.POST("/login", middleware.CpatchaMiddleware(), auth.LoginHandler)
+		v1.POST("/register", middleware.CpatchaMiddleware(), user.CreateUser)
+	}
 	v1.Use(middleware.JWTAuthMiddleware())
 	u := v1.Group("/user")
 	u.Use(middleware.AllowedMiddleware())

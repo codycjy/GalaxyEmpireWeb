@@ -267,7 +267,6 @@ func (service *userService) LoginUser(ctx context.Context, user *models.User) *u
 	traceID := utils.TraceIDFromContext(ctx)
 	username := user.Username
 	password := user.Password
-	fmt.Println("username", username, "password", password)
 	log.Info("[service]LoginUser",
 		zap.String("traceID", traceID),
 		zap.String("username", username),

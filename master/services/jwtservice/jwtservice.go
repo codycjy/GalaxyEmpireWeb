@@ -2,6 +2,7 @@ package jwtservice
 
 import (
 	"errors"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,10 +17,15 @@ type userClaims struct {
 }
 
 func GenerateToken(UserID uint) (string, error) {
+	var expireTime = 24 * time.Hour
+	// 测试环境下token有效期为15s
+	if os.Getenv("ENV") == "test" {
+		expireTime = 15 * time.Second
+	}
 	claims := userClaims{
 		UserID: UserID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 存在时间
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expireTime)), // 存在时间
 		},
 	}
 	// 生成token

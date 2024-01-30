@@ -1,0 +1,25 @@
+name: Pythontest Check
+
+on: [push, pull_request]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        cd master/test
+        pip install -r requirements.txt
+
+    - name: Run pytest in test folder
+      run: |
+        cd master/test
+        pytest
