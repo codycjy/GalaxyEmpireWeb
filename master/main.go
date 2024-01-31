@@ -19,6 +19,9 @@ import (
 )
 
 var services = make(map[string]interface{})
+var db *gorm.DB
+var mq *queue.RabbitMQConnection
+var rdb *r.Client
 
 func servicesInit(
 	db *gorm.DB,
@@ -29,10 +32,23 @@ func servicesInit(
 	taskservice.InitService(db, mq)
 	captchaservice.InitCaptchaService(rdb)
 }
+func queueInit(mq *queue.RabbitMQConnection) {
 
-var db *gorm.DB
-var mq *queue.RabbitMQConnection
-var rdb *r.Client
+	taskChan := make(chan queue.DelayedMessage)
+
+	mqProducer := queue.NewRabbitMQProducer(mq, taskChan)
+	mqProducer.StartPublishing("")
+	// TODO: init service with queue
+
+	messageChan := make(chan []byte)
+
+	mqConsumer := queue.NewRabbitMQConsumer(mq, messageChan)
+	taskHandler := taskservice.NewTaskHandler(rdb, db, messageChan)
+
+	mqConsumer.StartConsuming("response")
+	taskHandler.HandleResponse()
+
+}
 
 func main() {
 	rdb = redis.GetRedisDB()

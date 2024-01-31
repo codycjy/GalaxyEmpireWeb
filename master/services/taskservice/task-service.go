@@ -83,7 +83,7 @@ func (s *taskService) sendMessage(message string, queue string) *utils.ServiceEr
 	return nil
 }
 
-func (s *taskService) SendTask(task models.Task) *utils.ServiceError {
+func (s *taskService) SendTask(task models.TaskModel) *utils.ServiceError {
 	queue := task.QueueName()
 	jsonStr, err := json.Marshal(task)
 	if err != nil {
@@ -94,69 +94,4 @@ func (s *taskService) SendTask(task models.Task) *utils.ServiceError {
 		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
 	}
 	return nil
-}
-func (s *taskService) ConsumeResponseQueue() {
-	queueName := ""
-
-	msgs, err := s.MQ.Channel.Consume(
-		queueName, // 队列名称
-		"",        // 消费者标签 - 不指定则由服务器生成
-		true,      // 自动应答
-		false,     // 独占模式
-		false,     // 不发送给同一连接的消费者
-		false,     // 阻塞
-		nil,       // 参数
-	)
-	if err != nil {
-		log.Fatal("Failed to register a consumer",
-			zap.Error(err),
-		)
-	}
-
-	go func() {
-		for msg := range msgs {
-			s.processResponseMessage(msg)
-		}
-	}()
-}
-
-func (s *taskService) processResponseMessage(msg amqp.Delivery) {
-	// TODO: process response message
-	jsonStr := string(msg.Body)
-	log.Info("[service]Received a message: %s",
-		zap.String("json body", jsonStr),
-	)
-	var taskResponse models.TaskResponse
-	err := json.Unmarshal([]byte(jsonStr), &taskResponse)
-	if err != nil {
-		log.Error("[service]Unmarshal task response failed",
-			zap.Error(err),
-		)
-		msg.Ack(false)
-	}
-	s.processTaskResponse(&taskResponse)
-	msg.Ack(false)
-
-}
-
-func (s *taskService) processTaskResponse(taskResponse *models.TaskResponse) {
-	if !taskResponse.Success {
-		s.taskRetry(taskResponse.TaskID)
-		return
-	}
-	switch taskResponse.TaskType {
-	case models.RouteTaskName:
-		{
-			taskProcessors[models.RouteTaskName].ProcessTask(&taskResponse.Data)
-		}
-	case models.PlanTaskName:
-		{
-			taskProcessors[models.PlanTaskName].ProcessTask(&taskResponse.Data)
-
-		}
-
-	}
-}
-func (s *taskService) taskRetry(taskID int) {
-
 }

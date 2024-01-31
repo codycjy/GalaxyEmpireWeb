@@ -8,3 +8,4 @@ var UserRolePrefix = "user_role_"
 
 var TestExipre = 30 * time.Second
 var ProdExpire = 4 * time.Hour
+var TaskCountPrefix = "task_count_"

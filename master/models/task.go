@@ -1,45 +1,37 @@
 package models
 
 import (
-	"encoding/json"
-	"time"
-
-	"gorm.io/gorm"
+	"github.com/goccy/go-json"
+	"github.com/google/uuid"
 )
 
 type Task interface {
-	QueueName() string
-	TaskType() string
-	SetAccountInfo(accountInfo AccountInfo)
-	GetAccountID() uint
-	GetID() uint
+	PrepareMessage() ([]byte, error)
 }
 
-type BaseTask struct {
-	gorm.Model
-	Name      string    `json:"name"`
-	Logs      []taskLog `gorm:"polymorphic:Refer"`
-	NextStart time.Time `json:"next_start"`
-	Enabled   bool      `json:"enabled"`
+type taskItem struct {
+	ID    uuid.UUID `json:"id"`    //uuid
+	Delay int64     `json:"delay"` // timestamp millisecond
+	TaskModel
+}
+
+func NewTaskItem(taskModel TaskModel, delay int64) *taskItem {
+	return &taskItem{
+		ID:        uuid.New(),
+		TaskModel: taskModel,
+		Delay:     delay,
+	}
+}
+
+func (t taskItem) PrepareMessage() ([]byte, error) {
+	return json.Marshal(t.TaskModel)
 }
 
 type TaskResponse struct {
-	TaskType string          `json:"task_type"`
-	Success  bool            `json:"success"`
-	Message  string          `json:"message"`
-	TaskID   int             `json:"task_id"`
-	Data     json.RawMessage `json:"data"` // 用于存储特定任务类型的数据
-}
-
-// TODO: task log
-type taskLog struct {
-	gorm.Model
-	ReferID   uint   // 引用的 Task ID
-	ReferType string // 引用的 Task 类型
-	// 其他字段...
-}
-
-func NewLog() *taskLog {
-
-	return &taskLog{}
+	ID      uuid.UUID       `json:"id"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	TaskID  int             `json:"task_id"`
+	Delay   int64 		`json:"delay"`
+	Data    json.RawMessage `json:"data"` // 用于存储特定任务类型的数据
 }

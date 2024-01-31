@@ -25,7 +25,7 @@ func initTaskGenerator(db *gorm.DB, mq *queue.RabbitMQConnection, taskService *t
 	}
 }
 
-func (generator *TaskGenerator) setAccountInfo(ctx context.Context, task models.Task) error {
+func (generator *TaskGenerator) setAccountInfo(ctx context.Context, task models.TaskModel) error {
 	traceID := utils.TraceIDFromContext(ctx)
 	var account models.Account
 	log.Info("[service]Get account",
@@ -46,7 +46,7 @@ func (generator *TaskGenerator) setAccountInfo(ctx context.Context, task models.
 	return nil
 }
 
-func generateTasks[T models.Task](ctx context.Context, now time.Time, tasks []T, generator TaskGenerator) {
+func generateTasks[T models.TaskModel](ctx context.Context, now time.Time, tasks []T, generator TaskGenerator) {
 	traceID := utils.TraceIDFromContext(ctx)
 
 	var accountIDs []uint
