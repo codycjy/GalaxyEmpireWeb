@@ -4,7 +4,7 @@ import "go.uber.org/zap"
 
 type RabbitMQProducer struct {
 	mq          *RabbitMQConnection
-	MessageChan chan DelayedMessage
+	MessageChan chan *DelayedMessage
 }
 
 type DelayedMessage struct {
@@ -13,7 +13,14 @@ type DelayedMessage struct {
 	Delay      int64
 }
 
-func NewRabbitMQProducer(mq *RabbitMQConnection, messageChan chan DelayedMessage) *RabbitMQProducer {
+func NewDelayedMessage(routingKey string, body []byte, delay int64) *DelayedMessage {
+	return &DelayedMessage{
+		RoutingKey: routingKey,
+		Body:       body,
+		Delay:      delay,
+	}
+}
+func NewRabbitMQProducer(mq *RabbitMQConnection, messageChan chan *DelayedMessage) *RabbitMQProducer {
 	return &RabbitMQProducer{
 		mq:          mq,
 		MessageChan: messageChan,

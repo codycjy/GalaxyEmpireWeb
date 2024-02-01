@@ -12,7 +12,7 @@ type PlanTask struct {
 	AccountID uint
 }
 
-func (t *PlanTask) QueueName() string {
+func (t *PlanTask) RoutingKey() string {
 	if os.Getenv("ENV") == "test" {
 		return "Test_" + "HPQueue"
 	}

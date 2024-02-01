@@ -785,11 +785,11 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "next_start": {
-                    "type": "string"
-                },
                 "repeat": {
                     "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.TaskStatus"
                 },
                 "to": {
                     "$ref": "#/definitions/models.Star"
@@ -820,6 +820,17 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "models.TaskStatus": {
+            "type": "integer",
+            "enum": [
+                1,
+                0
+            ],
+            "x-enum-varnames": [
+                "TaskStatusRunning",
+                "TaskStatusStop"
+            ]
         },
         "models.User": {
             "type": "object",

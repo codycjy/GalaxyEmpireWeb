@@ -1,25 +1,27 @@
 package models
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
 type TaskModel interface {
-	QueueName() string
+	RoutingKey() string
 	TaskType() string
 	SetAccountInfo(accountInfo AccountInfo)
 	GetAccountID() uint
 	GetID() uint
 }
+type TaskStatus int
+
+const TaskStatusRunning TaskStatus = 1
+const TaskStatusStop TaskStatus = 0
 
 type BaseTask struct {
 	gorm.Model
-	Name      string    `json:"name"`
-	Logs      []taskLog `gorm:"polymorphic:Refer"`
-	NextStart time.Time `json:"next_start"`
-	Enabled   bool      `json:"enabled"`
+	Name    string     `json:"name"`
+	Logs    []taskLog  `gorm:"polymorphic:Refer"`
+	Status  TaskStatus `json:"status"`
+	Enabled bool       `json:"enabled"`
 }
 
 // TODO: task log

@@ -146,10 +146,10 @@ definitions:
         type: array
       name:
         type: string
-      next_start:
-        type: string
       repeat:
         type: integer
+      status:
+        $ref: '#/definitions/models.TaskStatus'
       to:
         $ref: '#/definitions/models.Star'
       updatedAt:
@@ -170,6 +170,14 @@ definitions:
         description: For node use enemy will be empty
         type: integer
     type: object
+  models.TaskStatus:
+    enum:
+    - 1
+    - 0
+    type: integer
+    x-enum-varnames:
+    - TaskStatusRunning
+    - TaskStatusStop
   models.User:
     properties:
       accounts:

@@ -18,9 +18,24 @@ type TaskHandler struct {
 	rdb         *r.Client
 	db          *gorm.DB
 	messageChan chan []byte
+	taskChan    chan *models.TaskItem
 }
 
-func NewTaskHandler(rdb *r.Client, db *gorm.DB, messageChan chan []byte) *TaskHandler // TODO:
+var taskHandler *TaskHandler
+
+func NewTaskHandler(rdb *r.Client, db *gorm.DB, messageChan chan []byte) *TaskHandler {
+	return &TaskHandler{
+		rdb:         rdb,
+		db:          db,
+		messageChan: messageChan,
+	}
+}
+func getTaskHandler(rdb *r.Client, db *gorm.DB, messageChan chan []byte) *TaskHandler {
+	if taskHandler == nil {
+		taskHandler = NewTaskHandler(rdb, db, messageChan)
+	}
+	return taskHandler
+}
 
 func (taskHandler TaskHandler) HandleResponse() {
 	for msg := range taskHandler.messageChan {
@@ -41,13 +56,23 @@ func (taskHandler TaskHandler) HandleResponse() {
 func (taskHandler TaskHandler) handle(ctx context.Context, response models.TaskResponse) {
 	if response.Success != true {
 		log.Warn("[service]task failed",
-			zap.Int("TaskID", response.TaskID),
+			zap.Uint("TaskID", response.TaskID),
 			zap.String("ID", response.ID.String()),
 		)
 	}
 
-	taskCountKey:=fmt.Sprintf("%s%d",consts.TaskCountPrefix,response.TaskID)
-	taskHandler.rdb.Decr(ctx,taskCountKey)
-	// TODO: send new task and delay to generate chan 
+	taskCountKey := fmt.Sprintf("%s%d", consts.TaskCountPrefix, response.TaskID)
+	taskHandler.rdb.Decr(ctx, taskCountKey)
+	switch response.TaskType {
+	case "RouteTask":
+		{
+			routeTask, err := findTasksByID[*models.RouteTask](ctx, response.TaskID, taskHandler.db)
+			if err != nil {
+				return
+			}
+			taskItem := models.NewTaskItem(routeTask, response.Delay)
+			taskHandler.taskChan <- taskItem
+		}
+	}
 
 }

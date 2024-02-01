@@ -16,7 +16,7 @@ type RouteTask struct {
 	AccountInfo AccountInfo `gorm:"-"`
 }
 
-func (routeTask *RouteTask) QueueName() string {
+func (routeTask *RouteTask) RoutingKey() string {
 	if os.Getenv("ENV") == "test" {
 		return "TEST_" + "NormalQueue"
 	}
@@ -35,4 +35,7 @@ func (routeTask *RouteTask) GetAccountID() uint {
 }
 func (routeTask *RouteTask) GetID() uint {
 	return routeTask.ID
+}
+func (routeTask *RouteTask) SetID(id uint) {
+	routeTask.ID = id
 }
