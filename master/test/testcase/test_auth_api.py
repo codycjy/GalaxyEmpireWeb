@@ -11,6 +11,8 @@ class Test_Login():
     def setup_class(self):
         self.root_url = "http://localhost:9333/api/v1/"
         self.req_session = requests.Session()
+        # 添加测试用户
+        rep0 = self.req_session.post(self.root_url + 'register', json={"username": 'testuser1', "password": '123456'})
         # 获取token
         rep = self.req_session.post(self.root_url + 'login', json={"username": 'testuser1', "password": '123456'})
         self.token = rep.json()['token']
@@ -56,5 +58,8 @@ class Test_Login():
         if type == '2':
             time.sleep(15)  # token过期
         responce = self.req_session.get(self.root_url + 'user/1')
+        if type == '1':
+            assert responce.status_code == 200
+        else:
+            assert responce.status_code == 401
         allure.attach(responce.text, name="Response Data", attachment_type=allure.attachment_type.TEXT)
-        print(responce.status_code, '\n', responce.text)

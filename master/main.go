@@ -39,14 +39,9 @@ func main() {
 	mq = queue.GetRabbitMQ()
 
 	if os.Getenv("env") == "test" {
-		// 测试环境下的创建一个新用户
 		db = sqlite.GetTestDB()
 		db.AutoMigrate(&models.User{})
-		testUser := &models.User{
-			Username: "testuser1",
-			Password: "123456",
-		}
-		db.Create(testUser)
+
 	} else {
 		db = mysql.GetDB()
 	}

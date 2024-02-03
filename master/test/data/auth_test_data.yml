@@ -5,7 +5,7 @@ test_login:
 
 test_register:
   - ["user not exist", "registeruser1",'123456','nil']
-  - ["user exist", "testuser1",'123456','failed create account']
+  - ["user exist", "testuser1",'123456','failed create user']
 
 test_token:
     - ["user with token",'1']

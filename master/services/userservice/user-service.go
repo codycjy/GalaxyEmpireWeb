@@ -68,7 +68,7 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError, "failed create account", err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed create user", err)
 	}
 	return nil
 }

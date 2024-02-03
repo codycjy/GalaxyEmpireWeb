@@ -20,7 +20,8 @@ func GenerateToken(UserID uint) (string, error) {
 	var expireTime = 24 * time.Hour
 	// 测试环境下token有效期为15s
 	if os.Getenv("ENV") == "test" {
-		expireTime = 15 * time.Second
+		timestr := os.Getenv("TOKEN_EXPIRE_TIME")
+		expireTime,_ = time.ParseDuration(timestr)
 	}
 	claims := userClaims{
 		UserID: UserID,
