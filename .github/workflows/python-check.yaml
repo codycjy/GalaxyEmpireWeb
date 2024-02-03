@@ -1,6 +1,6 @@
 name: Pythontest Check
 
-on: [push, pull_request]
+on: [pull_request]
 
 env:
   TOKEN_EXPIRE_TIME: 15s
