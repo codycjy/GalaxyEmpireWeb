@@ -45,7 +45,7 @@ func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 func InitConnection() {
 	if os.Getenv("env") == "test" {
 		// 测试环境
- 	        connStr := os.Getenv("RABBITMQ_STR")
+		connStr := os.Getenv("RABBITMQ_STR")
 		if connStr == "" {
 			log.Fatalf("Failed to get RabbitMQ connection string")
 		}
