@@ -53,7 +53,7 @@ func ParseToken(tokenString string) (*userClaims, error) {
 	return nil, errors.New("invalid token")
 }
 
-func generateTokenString(length int) (string) {
+func generateTokenString(length int) string {
 	seed := int64(12)
 	rand.Seed(seed)
 	randowBytes := make([]byte, 32)

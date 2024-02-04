@@ -22,14 +22,14 @@ func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 	var connStr string
 	if os.Getenv("env") == "test" {
 		connStr = os.Getenv("RABBITMQ_STR")
-	}else{
+	} else {
 		connStr = fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
 			cfg.RabbitMQ.User,
 			cfg.RabbitMQ.Password,
 			cfg.RabbitMQ.Host,
 			cfg.RabbitMQ.Port,
 			cfg.RabbitMQ.Vhost,
-	)
+		)
 	}
 	conn, err := amqp.Dial(connStr)
 	if err != nil {
