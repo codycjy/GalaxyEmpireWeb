@@ -271,20 +271,7 @@ func (service *userService) LoginUser(ctx context.Context, user *models.User) *u
 		zap.String("traceID", traceID),
 		zap.String("username", username),
 	)
-	err := service.DB.Where("username = ?", username).First(&user).Error
-	// 检查是否有该用户
-	if err != nil {
-		log.Error("[service]LoginUser failed",
-			zap.String("traceID", traceID),
-			zap.String("username", username),
-			zap.Error(err),
-		)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return utils.NewServiceError(http.StatusNotFound, "User Not Found", err)
-		}
-		return utils.NewServiceError(http.StatusInternalServerError, "Failed To Find User By ID", err)
-	}
-	// 检查密码是否正确
+	// 检查用户密码是否匹配
 	err1 := service.DB.Where("username = ? AND password = ?", username, password).First(&user).Error
 	if err1 != nil {
 		log.Warn("[service]LoginUser failed - wrong password",

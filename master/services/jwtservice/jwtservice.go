@@ -1,15 +1,14 @@
 package jwtservice
 
 import (
+	"encoding/base64"
 	"errors"
+	"math/rand"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
-
-// jwtkey
-var jwtKey = []byte("my-secret-key")
 
 type userClaims struct {
 	UserID uint `json:"user_id"`
@@ -18,6 +17,7 @@ type userClaims struct {
 
 func GenerateToken(UserID uint) (string, error) {
 	var expireTime = 24 * time.Hour
+	var jwtKey = []byte(generateTokenString(32))
 	// 测试环境下token有效期为15s
 	if os.Getenv("ENV") == "test" {
 		timestr := os.Getenv("TOKEN_EXPIRE_TIME")
@@ -36,6 +36,7 @@ func GenerateToken(UserID uint) (string, error) {
 }
 
 func ParseToken(tokenString string) (*userClaims, error) {
+	var jwtKey = []byte(generateTokenString(32))
 	var mc = new(userClaims)
 	// 解析token
 	token, err := jwt.ParseWithClaims(tokenString, mc, func(token *jwt.Token) (interface{}, error) {
@@ -50,4 +51,13 @@ func ParseToken(tokenString string) (*userClaims, error) {
 		return mc, nil
 	}
 	return nil, errors.New("invalid token")
+}
+
+func generateTokenString(length int) (string) {
+	seed := int64(12)
+	rand.Seed(seed)
+	randowBytes := make([]byte, 32)
+	rand.Read(randowBytes)
+	tokenString := base64.URLEncoding.EncodeToString(randowBytes)
+	return tokenString[:length]
 }

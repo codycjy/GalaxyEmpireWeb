@@ -40,8 +40,6 @@ func main() {
 
 	if os.Getenv("env") == "test" {
 		db = sqlite.GetTestDB()
-		db.AutoMigrate(&models.User{})
-
 	} else {
 		db = mysql.GetDB()
 	}

@@ -7,9 +7,10 @@ import (
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
 	"GalaxyEmpireWeb/middleware"
+	"os"
+
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,14 +36,12 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	}
 	v1.Use(middleware.JWTAuthMiddleware())
 	u := v1.Group("/user")
-	u.Use(middleware.AllowedMiddleware())
 	{
 		u.GET("/:id", user.GetUser)
 		u.DELETE("", user.DeleteUser)
 		u.PUT("", user.UpdateUser)
 	}
 	balance := u.Group("/balance")
-	balance.Use(middleware.AllowedMiddleware())
 	{
 		balance.PUT("", user.UpdateBalance)
 	}

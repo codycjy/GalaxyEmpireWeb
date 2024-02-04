@@ -19,13 +19,18 @@ var rabbitMQConnection *RabbitMQConnection
 
 // NewRabbitMQConnection 创建一个新的 RabbitMQ 连接
 func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
-	connStr := fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
-		cfg.RabbitMQ.User,
-		cfg.RabbitMQ.Password,
-		cfg.RabbitMQ.Host,
-		cfg.RabbitMQ.Port,
-		cfg.RabbitMQ.Vhost,
+	var connStr string
+	if os.Getenv("env") == "test" {
+		connStr = os.Getenv("RABBITMQ_STR")
+	}else{
+		connStr = fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
+			cfg.RabbitMQ.User,
+			cfg.RabbitMQ.Password,
+			cfg.RabbitMQ.Host,
+			cfg.RabbitMQ.Port,
+			cfg.RabbitMQ.Vhost,
 	)
+	}
 	conn, err := amqp.Dial(connStr)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
@@ -43,20 +48,6 @@ func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 
 // InitConnection 初始化 RabbitMQ 连接
 func InitConnection() {
-	if os.Getenv("env") == "test" {
-		// 测试环境
-		connStr := os.Getenv("RABBITMQ_STR")
-		if connStr == "" {
-			log.Fatalf("Failed to get RabbitMQ connection string")
-		}
-		conn, _ := amqp.Dial(connStr)
-		ch, _ := conn.Channel()
-		rabbitMQConnection = &RabbitMQConnection{
-			Conn:    conn,
-			Channel: ch,
-		}
-		return
-	}
 	rabbitMQConnection = NewRabbitMQConnection(config.GetRabbitMQConfig())
 
 }
