@@ -42,6 +42,11 @@ definitions:
       message:
         type: string
     type: object
+  auth.succeedResponse:
+    properties:
+      token:
+        type: string
+    type: object
   gorm.DeletedAt:
     properties:
       time:
@@ -416,6 +421,36 @@ paths:
       summary: Generate captcha picture
       tags:
       - Captcha
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and generate JWT token
+      parameters:
+      - description: UserID and Password
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with JWT token
+          schema:
+            $ref: '#/definitions/auth.succeedResponse'
+        "400":
+          description: Bad request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: User Login
+      tags:
+      - auth
   /ping:
     get:
       consumes:

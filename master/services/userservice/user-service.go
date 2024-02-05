@@ -68,7 +68,7 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError, "failed create account", err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed create user", err)
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (service *userService) Update(ctx context.Context, user *models.User) *util
 		zap.String("traceID", traceID),
 		zap.String("username", user.Username),
 	)
-	allowed, _ := service.isUserAllowed(ctx, user.ID)
+	allowed, _ := service.IsUserAllowed(ctx, user.ID)
 	if !allowed {
 		log.Info("[service]Get Update By ID - Not allowed",
 			zap.String("traceID", traceID),
@@ -243,7 +243,7 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 
 // Prepared for more complicated cases
 // Seem Useless currently lol
-func (service *userService) isUserAllowed(ctx context.Context, userID uint) (allowed bool, err error) {
+func (service *userService) IsUserAllowed(ctx context.Context, userID uint) (allowed bool, err error) {
 	traceID := utils.TraceIDFromContext(ctx)
 	role := ctx.Value("role").(int)
 	ctxUserID := ctx.Value("userID").(uint)
@@ -261,4 +261,25 @@ func (service *userService) isUserAllowed(ctx context.Context, userID uint) (all
 		return true, nil
 	}
 	return false, nil
+}
+
+func (service *userService) LoginUser(ctx context.Context, user *models.User) *utils.ServiceError {
+	traceID := utils.TraceIDFromContext(ctx)
+	username := user.Username
+	password := user.Password
+	log.Info("[service]LoginUser",
+		zap.String("traceID", traceID),
+		zap.String("username", username),
+	)
+	// 检查用户密码是否匹配
+	err1 := service.DB.Where("username = ? AND password = ?", username, password).First(&user).Error
+	if err1 != nil {
+		log.Warn("[service]LoginUser failed - wrong password",
+			zap.String("traceID", traceID),
+			zap.String("username", username),
+		)
+		return utils.NewServiceError(http.StatusUnauthorized, "Wrong Password", err1)
+
+	}
+	return nil
 }

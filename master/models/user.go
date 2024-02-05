@@ -6,13 +6,13 @@ import (
 
 type User struct {
 	gorm.Model
-	Username string `gorm:"unique;not null"`
+	Username string `gorm:"unique;not null" json:"username"`
 	// WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!
 	// NOTE: Checked in db, DO api check
-	Password string `gorm:"not null"`
-	Balance  int
-	Role     int       // 0: normal user, 1: admin
-	Accounts []Account `gorm:"foreignKey:UserID"`
+	Password string    `gorm:"not null" json:"password"`
+	Balance  int       ` json:"balance"`
+	Role     int       `json:"role"` // 0: normal user, 1: admin
+	Accounts []Account `gorm:"foreignKey:UserID" json:"accounts"`
 }
 
 func (user *User) ToDTO() *UserDTO {

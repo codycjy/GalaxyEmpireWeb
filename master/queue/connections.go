@@ -4,6 +4,7 @@ import (
 	"GalaxyEmpireWeb/config"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/streadway/amqp"
 )
@@ -18,14 +19,21 @@ var rabbitMQConnection *RabbitMQConnection
 
 // NewRabbitMQConnection 创建一个新的 RabbitMQ 连接
 func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
-	connStr := fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
-		cfg.RabbitMQ.User,
-		cfg.RabbitMQ.Password,
-		cfg.RabbitMQ.Host,
-		cfg.RabbitMQ.Port,
-		cfg.RabbitMQ.Vhost,
-	)
-
+	var connStr string
+	if os.Getenv("env") == "test" {
+		connStr = os.Getenv("RABBITMQ_STR")
+		if connStr == "" {
+			log.Fatalf("Failed to connect to RabbitMQ: %v", "RABBITMQ_STR is empty")
+		}
+	} else {
+		connStr = fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
+			cfg.RabbitMQ.User,
+			cfg.RabbitMQ.Password,
+			cfg.RabbitMQ.Host,
+			cfg.RabbitMQ.Port,
+			cfg.RabbitMQ.Vhost,
+		)
+	}
 	conn, err := amqp.Dial(connStr)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)

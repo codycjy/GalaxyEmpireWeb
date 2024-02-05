@@ -1,0 +1,14 @@
+test_login:
+  - ["user exist", "testuser1",'123456','nil']
+  - ["user not exist", "testuser2",'123456','Wrong Username or Password']
+  - ['user with wrong password','testuser1','wrongpassword','Wrong Username or Password']
+
+test_register:
+  - ["user not exist", "registeruser1",'123456','nil']
+  - ["user exist", "testuser1",'123456','failed create user']
+
+test_token:
+    - ["user with token",'1']
+    - ['user with expired token','2']
+    - ['user without token','3']
+    - ['user with wrong token','4']
