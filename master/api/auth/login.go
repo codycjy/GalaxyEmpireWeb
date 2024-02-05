@@ -38,7 +38,7 @@ func LoginHandler(c *gin.Context) {
 	}
 	user := &models.User{}
 	if err := c.ShouldBindJSON(user); err != nil {
-		c.JSON(http.StatusUnauthorized, api.ErrorResponse{
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
 			Message: "Failed to bind json",
