@@ -31,6 +31,24 @@
               @keyup.enter.native="register('registerForm')">
             </el-input>
           </el-form-item>
+          <el-form-item prop="captcha">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-input
+                  v-model="registerForm.captcha"
+                  placeholder="验证码">
+                </el-input>
+              </el-col>
+              <el-col :span="12">
+                <img
+                  :src="captchaUrl"
+                  alt="加载中"
+                  class="login-captcha"
+                  @click="getCaptcha"
+                >
+              </el-col>
+            </el-row>
+          </el-form-item>
         </el-form>
         <div class="clearfix"></div>
         <div class="btns">
@@ -48,9 +66,12 @@
 </template>
 
 <script>
-import { account, registerPwd } from '@/util/validateRule'
-import { userRegister } from '@/api/log'
+import { account, registerPwd, captcha } from '@/util/validateRule'
+import { getCaptchaId, getCaptchaPhoto, userRegister } from '@/api/log'
 export default {
+  created () {
+    this.getCaptcha()
+  },
   data () {
     const validateCheckPwd = (rule, value, callback) => {
       if (value === '') {
@@ -66,14 +87,18 @@ export default {
       registerForm: {
         account: '',
         pwd: '',
-        checkPwd: ''
+        checkPwd: '',
+        captcha: '',
+        captchaId: ''
       },
+      captchaUrl: '',
       rules: {
         account,
         pwd: registerPwd,
         checkPwd: [
           { validator: validateCheckPwd, trigger: 'blur' }
-        ]
+        ],
+        captcha
       }
     }
   },
@@ -81,10 +106,7 @@ export default {
     register (formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
-          userRegister({
-            account: this.registerForm.account,
-            pwd: this.registerForm.pwd
-          }).then(response => {
+          userRegister(this.registerForm).then(response => {
             this.$message({
               showClose: true,
               message: '注册成功',
@@ -98,6 +120,15 @@ export default {
           return false
         }
       })
+    },
+    async getCaptcha () {
+      const captchaInfo = await getCaptchaId()
+      this.registerForm.captchaId = captchaInfo.captcha_id
+      const captchaBinaryData = await getCaptchaPhoto(captchaInfo.captcha_id)
+      this.captchaUrl = window.URL.createObjectURL(
+        new Blob(
+          [captchaBinaryData],
+          { type: 'image/png' }))
     }
   }
 }
@@ -120,6 +151,9 @@ export default {
     border-radius: 10px;
     h2 {
       font-weight: 300;
+    }
+    &-captcha {
+      height: 40px;
     }
     .selected {
       width: 80%;
