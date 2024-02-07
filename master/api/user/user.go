@@ -148,6 +148,15 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
+	if user.Username == "" || user.Password == "" {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   "Username or Password is empty",
+			Message: "Username or Password is empty",
+			TraceID: traceID,
+		})
+		return
+	}
 	userService, err := userservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
@@ -156,6 +165,7 @@ func CreateUser(c *gin.Context) {
 			Message: "User service not initialized",
 			TraceID: traceID,
 		})
+		return
 	}
 	serviceErr := userService.Create(c, user)
 	if serviceErr != nil {
@@ -210,6 +220,7 @@ func UpdateUser(c *gin.Context) {
 			Message: "User service not initialized",
 			TraceID: traceID,
 		})
+		return
 	}
 	serviceErr := userService.Update(c, user)
 
