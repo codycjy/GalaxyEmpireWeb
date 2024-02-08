@@ -122,13 +122,16 @@ export default {
       })
     },
     async getCaptcha () {
-      const captchaInfo = await getCaptchaId()
-      this.registerForm.captchaId = captchaInfo.captcha_id
-      const captchaBinaryData = await getCaptchaPhoto(captchaInfo.captcha_id)
-      this.captchaUrl = window.URL.createObjectURL(
-        new Blob(
-          [captchaBinaryData],
-          { type: 'image/png' }))
+      const captchaInfo = await getCaptchaId().catch(err => console.log(err))
+      if (captchaInfo) {
+        this.registerForm.captchaId = captchaInfo.captcha_id
+        const captchaBinaryData = await getCaptchaPhoto(captchaInfo.captcha_id).catch(err => console.log(err))
+        if (!captchaBinaryData) return
+        this.captchaUrl = window.URL.createObjectURL(
+          new Blob(
+            [captchaBinaryData],
+            { type: 'image/png' }))
+      }
     }
   }
 }

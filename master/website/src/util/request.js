@@ -36,16 +36,7 @@ request.interceptors.response.use(
     return res
   },
   error => {
-    console.log('err' + error) // for debug
-    if (error.message === 'Network Error' && !error.response) {
-      Message.error(error.message)
-    } else {
-      Message({
-        showClose: true,
-        message: error.response.data.message || error.response.data.error,
-        type: 'error'
-      })
-    }
+    Message.error(error.response.data.message || error.response.data.error || error.message)
     return Promise.reject(error)
   }
 )
