@@ -157,6 +157,15 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
+	if len(user.Password) < 8 || len(user.Password) > 16 {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   "Password length should be between 8 and 16",
+			Message: "Password length should be between 8 and 16",
+			TraceID: traceID,
+		})
+		return
+	}
 	userService, err := userservice.GetService(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
