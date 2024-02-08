@@ -12,9 +12,9 @@ class Test_Login():
         self.root_url = "http://localhost:9333/api/v1/"
         self.req_session = requests.Session()
         # 添加测试用户
-        rep0 = self.req_session.post(self.root_url + 'register', json={"username": 'testuser1', "password": '123456'})
+        rep0 = self.req_session.post(self.root_url + 'register', json={"username": 'testuser1', "password": '12345678'})
         # 获取token
-        rep = self.req_session.post(self.root_url + 'login', json={"username": 'testuser1', "password": '123456'})
+        rep = self.req_session.post(self.root_url + 'login', json={"username": 'testuser1', "password": '12345678'})
         self.token = rep.json()['token']
 
     @allure.story("登录")
