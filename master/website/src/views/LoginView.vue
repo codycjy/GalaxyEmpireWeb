@@ -19,9 +19,26 @@
             <el-input
               v-model="loginForm.password"
               show-password
-              placeholder="密码"
-              @keyup.enter.native="login('loginForm')">
+              placeholder="密码">
             </el-input>
+          </el-form-item>
+          <el-form-item prop="captcha">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-input
+                  v-model="loginForm.captcha"
+                  placeholder="验证码">
+                </el-input>
+              </el-col>
+              <el-col :span="12">
+                <img
+                  :src="captchaUrl"
+                  alt="加载中"
+                  class="login-captcha"
+                  @click="getCaptcha"
+                >
+              </el-col>
+            </el-row>
           </el-form-item>
         </el-form>
         <div class="tips">
@@ -36,7 +53,7 @@
         <div class="btns">
           <el-button
             type="primary"
-            @click="login('loginForm')">登录
+            @click="login">登录
           </el-button>
         </div>
         <div class="register">
@@ -48,22 +65,28 @@
 </template>
 
 <script>
-import { account, loginPwd } from '@/util/validateRule'
+import { account, loginPwd, captcha } from '@/util/validateRule'
 import aes from '@/util/aes'
-import { userLogin } from '@/api/log'
+import { userLogin, getCaptchaId, getCaptchaPhoto } from '@/api/log'
 
 export default {
+  created () {
+    this.getCaptcha()
+  },
   data () {
     return {
-      activeName: 'pwdLogin',
       loginForm: {
         account: '',
-        password: ''
+        password: '',
+        captcha: '',
+        captchaId: ''
       },
+      captchaUrl: '',
       checked: false,
       rules: {
         account,
-        password: loginPwd
+        password: loginPwd,
+        captcha
       }
     }
   },
@@ -71,12 +94,18 @@ export default {
     this.getCookie()
   },
   methods: {
-    login (formName) {
-      this.$refs[formName].validate((valid) => {
+    login () {
+      this.$refs.loginForm.validate((valid) => {
         if (valid) {
+          console.log(this.loginForm)
           userLogin(this.loginForm).then(response => {
-            localStorage.setItem('token', response.data.token)
+            localStorage.setItem('token', response.token)
             this.$router.push('/home')
+            this.$message({
+              showClose: true,
+              message: '登录成功',
+              type: 'success'
+            })
           }).catch(err => {
             console.log(err)
           })
@@ -113,6 +142,18 @@ export default {
           }
         }
       }
+    },
+    async getCaptcha () {
+      const captchaInfo = await getCaptchaId().catch(err => console.log(err))
+      if (captchaInfo) {
+        this.loginForm.captchaId = captchaInfo.captcha_id
+        const captchaBinaryData = await getCaptchaPhoto(captchaInfo.captcha_id).catch(err => console.log(err))
+        if (!captchaBinaryData) return
+        this.captchaUrl = window.URL.createObjectURL(
+          new Blob(
+            [captchaBinaryData],
+            { type: 'image/png' }))
+      }
     }
   }
 }
@@ -133,6 +174,10 @@ export default {
     background-color: white;
     border: 3px solid white;
     border-radius: 10px;
+
+    &-captcha {
+      height: 40px;
+    }
     h2 {
       font-weight: 300;
     }

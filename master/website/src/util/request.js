@@ -24,10 +24,9 @@ request.interceptors.request.use(config => {
 // 可以在接口响应后统一处理结果
 request.interceptors.response.use(
   response => {
-    console.log('response', response)
     let res = response.data
     // 如果是返回的文件
-    if (response.config.responseType === 'blob') {
+    if (response.config.resultType === 'blob') {
       return res
     }
     // 兼容服务端返回的字符串数据
@@ -37,16 +36,7 @@ request.interceptors.response.use(
     return res
   },
   error => {
-    console.log('err' + error) // for debug
-    if (error.message === 'Network Error' && !error.response) {
-      Message.error(error.message)
-    } else {
-      Message({
-        showClose: true,
-        message: error.response.data.message,
-        type: 'error'
-      })
-    }
+    Message.error(error.response.data.message || error.response.data.error || error.message)
     return Promise.reject(error)
   }
 )

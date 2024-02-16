@@ -4,10 +4,14 @@ import aes from '@/util/aes'
 export function userLogin (loginData) {
   return request({
     method: 'POST',
-    url: '/user/login',
+    url: '/login',
     data: {
-      account: loginData.account,
-      pwd: aes.encrypt(loginData.password)
+      username: loginData.account,
+      password: aes.encrypt(loginData.password)
+    },
+    headers: {
+      captchaId: loginData.captchaId,
+      userInput: loginData.captcha
     }
   })
 }
@@ -15,10 +19,29 @@ export function userLogin (loginData) {
 export function userRegister (registerData) {
   return request({
     method: 'POST',
-    url: '/user/register',
+    url: '/register',
     data: {
-      account: registerData.account,
-      pwd: aes.encrypt(registerData.pwd)
+      username: registerData.account,
+      password: aes.encrypt(registerData.pwd)
+    },
+    headers: {
+      captchaId: registerData.captchaId,
+      userInput: registerData.captcha
     }
+  })
+}
+
+export function getCaptchaId () {
+  return request({
+    method: 'GET',
+    url: '/captcha'
+  })
+}
+
+export function getCaptchaPhoto (captchaId) {
+  return request({
+    method: 'GET',
+    url: `/captcha/${captchaId}`,
+    responseType: 'blob'
   })
 }
