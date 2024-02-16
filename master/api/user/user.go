@@ -1,21 +1,29 @@
+//go:build !test
+
 package user
 
 import (
+	"GalaxyEmpireWeb/api"
+	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
+	"GalaxyEmpireWeb/services/userservice"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
-type UserResponse struct {
-	Succeed bool        `json:"succeed"`
-	Data    models.User `json:"data"`
+type userResponse struct {
+	Succeed bool            `json:"succeed"`
+	Data    *models.UserDTO `json:"data"`
 }
-type UsersResponse struct {
-	Succeed bool          `json:"succeed"`
-	Data    []models.User `json:"data"`
+type usersResponse struct {
+	Succeed bool             `json:"succeed"`
+	Data    []models.UserDTO `json:"data"`
 }
+
+var log = logger.GetLogger()
 
 // GetUser godoc
 // @Summary Get user by ID
@@ -24,95 +32,163 @@ type UsersResponse struct {
 // @Accept json
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 200 {object} UserResponse "Successful response with user data"
-// @Failure 400 {object} map[string]interface{} "Bad Request with error message"
-// @Failure 500 {object} map[string]interface{} "Internal Server Error with error message"
+// @Success 200 {object} userResponse "Successful response with user data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user/{id} [get]
 func GetUser(c *gin.Context) {
-	var user models.User
+	traceID := c.GetString("traceID")
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"succeed": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-	err = user.GetByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, UserResponse{
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
+			Error:   err.Error(),
+			Message: "Wrong User ID",
+			TraceID: traceID,
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+	userService, err := userservice.GetService(c) //TODO: remove error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+			TraceID: traceID,
+		})
+	}
+	user, serviceErr := userService.GetById(c, uint(id), []string{})
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
-		Data:    user,
+		Data:    user.ToDTO(),
 	})
 }
 
-// GetUser godoc
+// GetUsers godoc
 // @Summary Get all users
 // @Description Get all Users
 // @Tags user
 // @Accept json
 // @Produce json
-// @Success 200 {object} UsersResponse "Successful response with user data"
-// @Failure 400 {object} map[string]interface{} "Bad Request with error message"
-// @Failure 500 {object} map[string]interface{} "Internal Server Error with error message"
+// @Success 200 {object} usersResponse "Successful response with user data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /users [get]
 func GetUsers(c *gin.Context) {
-	var users []models.User
-	err := models.GetAllUsers(&users)
-
+	traceID := c.GetString("traceID")
+	userService, err := userservice.GetService(c)
 	if err != nil {
-		c.JSON(http.StatusNotFound, UsersResponse{
+		log.Error("[api]User service not initialized",
+			zap.String("traceID", traceID),
+		)
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+			TraceID: traceID,
+		})
+	}
+	users, serviceErr := userService.GetAllUsers(c)
+	usersDTO := make([]models.UserDTO, len(users))
+	for _, user := range users {
+		usersDTO = append(usersDTO, *user.ToDTO())
+	}
+
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
+			TraceID: traceID,
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UsersResponse{
+	c.JSON(http.StatusOK, usersResponse{
 		Succeed: true,
-		Data:    users,
+		Data:    usersDTO,
 	})
 }
 
-// GetUser godoc
-// @Summary Crea user
+// CreateUser godoc
+// @Summary Create user
 // @Description Create User
 // @Tags user
 // @Accept json
 // @Produce json
 // @Param user body models.User required "User ID or Username"
-// @Success 200 {object} UserResponse "Successful response with user data"
-// @Failure 400 {object} map[string]interface{} "Bad Request with error message"
-// @Failure 500 {object} map[string]interface{} "Internal Server Error with error message"
+// @Success 200 {object} userResponse "Successful response with user data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [post]
 func CreateUser(c *gin.Context) {
-	var user models.User
-	err := c.BindJSON(&user)
+	traceID := c.GetString("traceID")
+	user := &models.User{}
+	err := c.BindJSON(user)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"succeed": false,
-			"message": "Bad request",
-			"error":   err,
-		})
-		return
-	}
-	err = user.Create()
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"succeed": false,
-			"message": "Internal server error",
-			"error":   err,
+		log.Error("[api]Failed to bind to user",
+			zap.String("traceID", traceID),
+		)
+
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Failed to bind to user",
+			TraceID: traceID,
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+	if user.Username == "" || user.Password == "" {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   "Username or Password is empty",
+			Message: "Username or Password is empty",
+			TraceID: traceID,
+		})
+		return
+	}
+	if len(user.Password) < 8 || len(user.Password) > 16 {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   "Password length should be between 8 and 16",
+			Message: "Password length should be between 8 and 16",
+			TraceID: traceID,
+		})
+		return
+	}
+	userService, err := userservice.GetService(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+			TraceID: traceID,
+		})
+		return
+	}
+	serviceErr := userService.Create(c, user)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
-		Data:    user,
+		Data:    user.ToDTO(),
 	})
 
 }
@@ -124,34 +200,51 @@ func CreateUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param user body models.User required "User ID or Username"
-// @Success 200 {object} UserResponse "Successful response with user data"
-// @Failure 400 {object} map[string]interface{} "Bad Request with error message"
-// @Failure 500 {object} map[string]interface{} "Internal Server Error with error message"
+// @Success 200 {object} userResponse "Successful response with user data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [put]
 func UpdateUser(c *gin.Context) {
-	var user models.User
+	traceID := c.GetString("traceID")
+
+	var user *models.User
 	err := c.BindJSON(&user)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"succeed": false,
-			"message": "Bad request",
-			"error":   err,
+		log.Error("[api]Failed to bind to user",
+			zap.String("traceID", traceID),
+		)
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Failed to bind to user",
+			TraceID: traceID,
 		})
 		return
 	}
-	err = user.Update()
-
+	userService, err := userservice.GetService(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"succeed": false,
-			"message": "Internal server error",
-			"error":   err,
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "User service not initialized",
+			TraceID: traceID,
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+	serviceErr := userService.Update(c, user)
+
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
-		Data:    user,
+		Data:    user.ToDTO(),
 	})
 
 }
@@ -163,33 +256,42 @@ func UpdateUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param user body models.User required "User ID or Username"
-// @Success 200 {object} UserResponse "Successful response with user data"
-// @Failure 400 {object} map[string]interface{} "Bad Request with error message"
-// @Failure 500 {object} map[string]interface{} "Internal Server Error with error message"
+// @Success 200 {object} userResponse "Successful response with user data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
 // @Router /user [delete]
 func DeleteUser(c *gin.Context) {
-	var user models.User
+	traceID := c.GetString("traceID")
+
+	var user *models.User
 	err := c.BindJSON(&user)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"succeed": false,
-			"message": "Bad request",
-			"error":   err,
-		})
-		return
-	}
-	err = user.Delete()
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"succeed": false,
-			"message": "Internal server error",
-			"error":   err,
+		log.Error("[api]Failed to bind to user",
+			zap.String("traceID", traceID),
+		)
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Failed to bind to user",
+			TraceID: traceID,
 		})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{
+
+	userService, err := userservice.GetService(c)
+	serviceErr := userService.Delete(c, user.ID)
+	if serviceErr != nil {
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, userResponse{
 		Succeed: true,
-		Data:    user,
 	})
 }

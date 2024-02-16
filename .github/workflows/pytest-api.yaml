@@ -1,0 +1,50 @@
+name: Pythontest Check
+
+on: [pull_request]
+
+env:
+  TOKEN_EXPIRE_TIME: 15s
+  RABBITMQ_STR: amqp://guest:guest@localhost:5672//
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Start Redis Docker container
+      run: |
+        docker run -d --name my-redis -p 6379:6379 redis
+    
+    - name: Start RabbitMQ Docker container
+      run: |
+        docker run -d --name my-rabbitmq -p 5672:5672 -p :15672:15672 rabbitmq:management
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '^1.21'  
+        cache-dependency-path: "**/*.sum" 
+
+    - name: Run main.go in test
+      run: |
+        cd master
+        export ENV=test
+        env env=test go run main.go > output.log 2>&1 &
+        sleep 60
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        cd master/test
+        pip install -r requirements.txt
+
+    - name: Run pytest in test folder
+      run: |
+        cd master/test
+        pytest
