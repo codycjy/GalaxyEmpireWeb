@@ -27,7 +27,7 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 	v1.GET("/ping", api.Ping)
 	v1.GET("/captcha", api.GetCaptcha)
 	v1.GET("/captcha/:captchaID", api.GeneratePicture)
-	if os.Getenv("ENV") == "test" {
+	if os.Getenv("ENV") == "test" || os.Getenv("ESCAPE_CAPTCHA") != "" {
 		v1.POST("/login", auth.LoginHandler)
 		v1.POST("/register", user.CreateUser)
 	} else {
