@@ -71,7 +71,7 @@ func (service *accountService) GetById(ctx context.Context, id uint, fields []st
 			zap.String("traceID", traceID),
 		)
 		return nil, utils.NewServiceError(
-			http.StatusUnauthorized,
+			http.StatusForbidden,
 			"Account Not allowed",
 			nil,
 		)
@@ -106,20 +106,24 @@ func (service *accountService) GetByUserId(ctx context.Context,
 	var accounts []models.Account
 	result := service.DB.Model(&models.Account{}).Where("user_id = ?", userId).Find(&accounts)
 	err := result.Error
-	if result.RowsAffected == 0 {
-		return &accounts, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
-	}
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("[service]Get Account By User ID failed - Not found",
+				zap.String("traceID", traceID),
+				zap.Error(err),
+			)
+			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
+
+		}
 		log.Error("[service]Get Account By User ID failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
-
-		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "SQL Service Error", err)
 	}
+	log.Info("[service]Successfully get accounts",
+		zap.String("traceID", traceID),
+		zap.Int("accounts count", len(accounts)))
 	return &accounts, nil
 }
 
@@ -273,28 +277,22 @@ func (service *accountService) isUserAllowed(ctx context.Context, accountID uint
 
 	// 如果键存在，检查集合中是否包含特定元素
 	isMember, err := service.RDB.SIsMember(ctx, key, accountID).Result()
-	if !isMember {
-		if err != nil {
-			log.Error("[service]Check User Permission - failed（1）",
-				zap.String("traceID", traceID),
-				zap.String("redis_key", key),
-				zap.Error(err),
-			)
-			return false, utils.NewServiceError(http.StatusInternalServerError, "redis retrieve error", err)
-		}
-		err = errors.New("redis retrieve error not this id")
-		log.Error("[service]Check User Permission - failed（2）",
+	// 首先检查错误
+	if err != nil {
+		log.Error("[service]Check User Permission - failed",
 			zap.String("traceID", traceID),
 			zap.String("redis_key", key),
 			zap.Error(err),
 		)
 		return false, utils.NewServiceError(http.StatusInternalServerError, "redis retrieve error", err)
 	}
+
 	log.Info("[service]Check User Permission - Success",
 		zap.String("traceID", traceID),
 		zap.Bool("isMember", isMember),
 	)
 	return isMember, nil
+
 }
 
 func (service *accountService) cacheUserAccounts(ctx context.Context, userID uint, accountIDs []uint) *utils.ServiceError {
