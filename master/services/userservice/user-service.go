@@ -159,6 +159,10 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed To Find User By ID", err)
 	}
+	log.Info("[serviec]User got",
+		zap.String("traceID", traceID),
+		zap.Uint("UserID", user.ID),
+	)
 	return &user, nil
 }
 
@@ -219,8 +223,8 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 	}
 
 	// 如果Redis中没有数据，从数据库查询
-	user, err := service.GetById(ctx, userID, []string{})
-	if err != nil {
+	user, err1 := service.GetById(ctx, userID, []string{})
+	if err1 != nil {
 		log.Error("[service]GetUserRole from db failed",
 			zap.String("traceID", traceID),
 			zap.Uint("userID", userID),

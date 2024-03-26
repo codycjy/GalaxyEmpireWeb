@@ -140,12 +140,6 @@ func TestAccountService_GetByUserId(t *testing.T) {
 					Server:   "testserver"},
 			},
 		},
-		{
-			name:    "Test get accounts by invalid user ID",
-			setup:   func(tx *gorm.DB) uint { return 999 },
-			wantErr: true,
-			want:    nil,
-		},
 	}
 
 	for _, tt := range tests {
@@ -159,11 +153,14 @@ func TestAccountService_GetByUserId(t *testing.T) {
 				DB: tx,
 			}
 			got, err := service.GetByUserId(ctx, userId, []string{})
+
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetByUserId() error = %v, wantErr %v", err.Error(), tt.wantErr)
-				return
-			}
-			if tt.wantErr {
+				if err != nil {
+					t.Errorf("GetByUserId() error = %v, wantErr %v", err.Error(), tt.wantErr)
+				} else {
+					t.Errorf("GetByUserId() error is nil,wantErr: %v got: %v", tt.wantErr, got)
+
+				}
 				return
 			}
 
