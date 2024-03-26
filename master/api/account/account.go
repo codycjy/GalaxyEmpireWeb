@@ -106,6 +106,20 @@ func GetAccountByUserID(c *gin.Context) {
 		return
 	}
 
+	role := c.Value("role").(int)
+	ctxUserID := c.Value("userID").(uint)
+	if role == 0 {
+		if uint(id) != ctxUserID {
+			c.JSON(http.StatusForbidden, api.ErrorResponse{
+				Succeed: false,
+				Error:   "Forbidden",
+				Message: "You are not allowed to access this resource",
+				TraceID: traceID,
+			})
+			return
+		}
+	}
+
 	accountService, _ := accountservice.GetService(c)
 	account, serviceErr := accountService.GetByUserId(c, uint(id), []string{})
 	if serviceErr != nil {
@@ -153,6 +167,14 @@ func CreateAccount(c *gin.Context) {
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Failed to bind json",
+			TraceID: traceID,
+		})
+		return
+
 	}
 	accountService, _ := accountservice.GetService(c)
 	serviceErr := accountService.Create(c, &account)
