@@ -1,5 +1,4 @@
 import request from '@/util/request'
-import aes from '@/util/aes'
 
 export function userLogin (loginData) {
   return request({
@@ -7,7 +6,7 @@ export function userLogin (loginData) {
     url: '/login',
     data: {
       username: loginData.account,
-      password: aes.encrypt(loginData.password)
+      password: loginData.password
     },
     headers: {
       captchaId: loginData.captchaId,
@@ -22,7 +21,7 @@ export function userRegister (registerData) {
     url: '/register',
     data: {
       username: registerData.account,
-      password: aes.encrypt(registerData.pwd)
+      password: registerData.pwd
     },
     headers: {
       captchaId: registerData.captchaId,

@@ -1,9 +1,9 @@
 test_getAccountsByUserId:
-  - ["user exist", "1"]
-  - ["user not exist", "2"]
-  - ["bad request", "w"]
+  - ["user exist", "1", "nil"]
+  - ["user not exist", "2", "You are not allowed to access this resource"]
+  - ["bad request", "w", "Wrong User ID"]
 
 test_getAccountById:
-  - ["account exist", "7"]
-  - ["account not exist", "2"]
-  - ["bad request", "w"]
+  - ["account exist", "1", "nil"]
+  - ["account not exist", "2", "Account Not allowed"]
+  - ["bad request", "w", "Wrong User ID"]
