@@ -12,10 +12,13 @@ import (
 
 // CasbinService 结构体
 type Enforcer interface {
-	Enforce(ctx context.Context, sub, obj, act string) (bool, error)
+    Enforce(ctx context.Context, sub, obj, act string) (bool, error)
+    AddPolicy(ctx context.Context, sub, obj, act string) (bool, error)
+    AddUserToGroup(ctx context.Context, user, group string) (bool, error)
 }
+
 type CasbinService struct {
-	enforcer *casbin.Enforcer
+    enforcer *casbin.Enforcer
 }
 
 var casbinEnforcer Enforcer

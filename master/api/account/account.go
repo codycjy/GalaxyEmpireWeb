@@ -7,7 +7,10 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/accountservice"
+	"GalaxyEmpireWeb/utils"
+	"errors"
 	"net/http"
+	"net/mail"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -176,6 +179,21 @@ func CreateAccount(c *gin.Context) {
 		return
 
 	}
+	err1:= verifyAccount(c, &account)
+	if err1 != nil {
+		log.Error("[api]Create Account failed",
+			zap.String("traceID", traceID),
+			zap.Error(err1),
+			)
+		c.JSON(err1.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   err1.Error(),
+			Message: err1.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+
 	accountService, _ := accountservice.GetService(c)
 	serviceErr := accountService.Create(c, &account)
 	if serviceErr != nil {
@@ -243,4 +261,23 @@ func DeleteAccount(c *gin.Context) {
 		TraceID: traceID,
 	})
 
+}
+
+func verifyAccount(c *gin.Context, account *models.Account) *utils.ApiError {
+	if account.Username == "" {
+		return utils.NewApiError(http.StatusBadRequest, "Username is required", errors.New("Username is required"))
+	}
+	if account.Password == "" {
+		return utils.NewApiError(http.StatusBadRequest, "Password is required", errors.New("Password is required"))
+	}
+	if account.Email == "" {
+		return utils.NewApiError(http.StatusBadRequest, "Email is required", errors.New("Email is required"))
+	}
+
+	_, err := mail.ParseAddress(account.Email)
+	if err != nil {
+		return utils.NewApiError(http.StatusBadRequest, "Invalid Email", err)
+	}
+
+	return nil
 }

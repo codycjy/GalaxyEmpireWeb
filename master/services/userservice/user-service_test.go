@@ -16,7 +16,7 @@ import (
 func TestUserService_Create(t *testing.T) {
 	ctx := utils.NewContextWithTraceID()
 	ctx = context.WithValue(ctx, "userID", uint(1))
-	ctx = context.WithValue(ctx, "role", uint(1))
+	ctx = context.WithValue(ctx, "role", 1) // use int instead of uint
 	casbinservice.InitCasbinService(sqlite.GetTestDB(), "../../config/model.conf")
 	type fields struct {
 		DB *gorm.DB
@@ -110,7 +110,7 @@ func TestUserService_Create(t *testing.T) {
 func TestUserService_GetById(t *testing.T) {
 	ctx := utils.NewContextWithTraceID()
 	ctx = context.WithValue(ctx, "userID", uint(1)) // TODO: add to case
-	ctx = context.WithValue(ctx, "role", 1)
+	ctx = context.WithValue(ctx, "role", 1) // use int instead of uint
 	fmt.Println("!!!!!!!!!!!!!", ctx, ctx.Value("role").(int))
 	casbinservice.InitCasbinService(sqlite.GetTestDB(), "../../config/model.conf")
 	type fields struct {
@@ -174,7 +174,7 @@ func TestUserService_GetById(t *testing.T) {
 				tx.Rollback()
 			}()
 
-			InitService(tx, rdb)
+			InitService(tx, rdb) // TODO: add enforcer
 			service, err := GetService(ctx)
 			if err != nil {
 				t.Errorf("UserService.GetById() error = %v", err)
@@ -204,7 +204,7 @@ func TestUserService_GetById(t *testing.T) {
 func TestUserService_Update(t *testing.T) {
 	ctx := utils.NewContextWithTraceID()
 	ctx = context.WithValue(ctx, "userID", uint(1)) // TODO: add to case
-	ctx = context.WithValue(ctx, "role", 1)
+	ctx = context.WithValue(ctx, "role", 1) // use int instead of uint
 	db := sqlite.GetTestDB()
 	db.AutoMigrate(&models.User{}) // Create User table
 	casbinservice.InitCasbinService(db, "../../config/model.conf")

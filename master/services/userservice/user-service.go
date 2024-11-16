@@ -29,7 +29,7 @@ var log = logger.GetLogger()
 var rolePrefix = consts.UserRolePrefix
 var expireTime = consts.ProdExpire
 
-const READ = 1
+const READ = 1 // TODO: change it later
 const WRITE = 2
 
 func NewService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) *userService {
@@ -41,6 +41,9 @@ func NewService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) *us
 }
 
 func InitService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) error {
+	if db == nil || rdb == nil || enforcer == nil {
+		log.Fatal("db, rdb, enforcer is nil")
+	}
 	if userServiceInstance != nil {
 		return errors.New("UserService is already initialized")
 	}
@@ -68,6 +71,7 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 		zap.String("traceID", traceID),
 		zap.String("username", user.Username),
 	)
+
 	err := service.DB.Create(user).Error
 	if err != nil {
 		log.Error("[service]Create user failed",
@@ -76,11 +80,36 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 		)
 		return utils.NewServiceError(http.StatusInternalServerError, "failed create user", err)
 	}
-	casbinservice := casbinservice.GetCasbinService()
+
 	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), user.ID)
-	service.Enforcer.AddPolicy(ctx, strconv.Itoa(int(user.ID)), obj, "read")
-	casbinservice.AddPolicy(ctx, strconv.Itoa(int(user.ID)), obj, "write")
-	casbinservice.AddUserToGroup(ctx, strconv.Itoa(int(user.ID)), "user")
+	userID := strconv.Itoa(int(user.ID))
+
+	fmt.Println("service.Enforcer", service.Enforcer)
+	// 使用注入的Enforcer，统一处理错误
+	if _, err := service.Enforcer.AddPolicy(ctx, userID, obj, "read"); err != nil {
+		log.Error("[service]Add read policy failed",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to add read policy", err)
+	}
+
+	if _, err := service.Enforcer.AddPolicy(ctx, userID, obj, "write"); err != nil {
+		log.Error("[service]Add write policy failed",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to add write policy", err)
+	}
+
+	if _, err := service.Enforcer.AddUserToGroup(ctx, userID, "user"); err != nil {
+		log.Error("[service]Add user to group failed",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to add user to group", err)
+	}
+
 	return nil
 }
 func (service *userService) Update(ctx context.Context, user *models.User) *utils.ServiceError {
@@ -167,8 +196,17 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 	for _, field := range fields {
 		cur.Preload(field)
 	}
-	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), user.ID)
-	allowed, _ := service.IsUserAllowed(ctx, obj, READ)
+	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), id)
+	allowed, err := service.IsUserAllowed(ctx, obj, READ)
+	if err != nil {
+		log.Error("[service]Get By ID - failed to validate user permission",
+			zap.String("traceID", traceID),
+			zap.Uint("userID", id),
+			zap.Error(err),
+		)
+
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed to Validate User Permission", err)
+	}
 	if !allowed {
 		log.Info("[service]Get By ID - Not allowed",
 			zap.String("traceID", traceID),
@@ -177,7 +215,7 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 		return nil, utils.NewServiceError(http.StatusUnauthorized, "User Not allowed", nil)
 	}
 
-	err := cur.Where("id = ?", id).First(&user).Error
+	err = cur.Where("id = ?", id).First(&user).Error
 	if err != nil {
 		log.Error("[service]Get user by id failed",
 			zap.String("traceID", traceID),
@@ -192,6 +230,43 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 		zap.String("traceID", traceID),
 		zap.Uint("UserID", user.ID),
 	)
+	return &user, nil
+}
+func (service *userService) getById(ctx context.Context, id uint, fields []string) (*models.User, *utils.ServiceError) {
+	traceID := utils.TraceIDFromContext(ctx)
+	log.Info("[service]Get User by id Unsafe",
+		zap.String("traceID", traceID),
+		zap.Uint("userID", id),
+	)
+	cur := service.DB
+	var user models.User
+
+	err := cur.Where("id = ?", id).First(&user).Error
+	if err != nil {
+		log.Error("[service]Get user by id failed",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn("[service]Get user by id unsafe- user not found",
+				zap.String("traceID", traceID),
+				zap.Uint("userID", id),
+			)
+			return nil, utils.NewServiceError(http.StatusNotFound, "User Not Found", err)
+		}
+		log.Error("[service]Get user by id unsafe- failed to find user",
+			zap.String("traceID", traceID),
+			zap.Uint("userID", id),
+			zap.Error(err),
+		)
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed To Find User By ID", err)
+	}
+	log.Info("[service]Get User by id Unsafe Success",
+		zap.String("traceID", traceID),
+		zap.Uint("userID", id),
+		zap.Int("userRole", user.Role),
+	)
+
 	return &user, nil
 }
 
@@ -250,9 +325,13 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 			zap.Error(err),
 		)
 	}
+	log.Warn("[service]GetUserRole from redis failed",
+		zap.String("traceID", traceID),
+		zap.Uint("userID", userID),
+	)
 
 	// 如果Redis中没有数据，从数据库查询
-	user, err1 := service.GetById(ctx, userID, []string{})
+	user, err1 := service.getById(ctx, userID, []string{})
 	if err1 != nil {
 		log.Error("[service]GetUserRole from db failed",
 			zap.String("traceID", traceID),
@@ -295,6 +374,7 @@ func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw in
 	if rw&2 == 2 {
 		opt = "write"
 	}
+	fmt.Println("obj", obj)
 	allowed, err = service.Enforcer.Enforce(ctx, strconv.Itoa(int(ctxUserID)), obj, opt)
 	if err != nil {
 		log.Error("[service]IsUserAllowedfailed to validate user permission",

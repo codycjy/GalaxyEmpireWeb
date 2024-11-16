@@ -16,6 +16,7 @@ class Test_Login():
         # 获取token
         rep = self.req_session.post(self.root_url + 'login', json={"username": 'testuser1', "password": '12345678'})
         self.token = rep.json()['token']
+        self.user_id = rep0.json()['data']['id']
 
     @allure.story("登录")
     @pytest.mark.parametrize("caseType,username,password,msg", auth_test_data['test_login'])
@@ -56,10 +57,14 @@ class Test_Login():
             'Authorization': f'{token}'
         })
         if type == '2':
-            time.sleep(15)  # token过期
-        responce = self.req_session.get(self.root_url + 'user/1')
+            self.req_session.headers.update({
+                'Authorization': f'{token}'
+            })
+            self.req_session.get(f'{self.root_url}user/{self.user_id}')
+            time.sleep(10)  # token过期
+        responce = self.req_session.get(f'{self.root_url}user/{self.user_id}')
         if type == '1':
+            print(responce.text, self.token)
             assert responce.status_code == 200
         else:
             assert responce.status_code == 401
-        allure.attach(responce.text, name="Response Data", attachment_type=allure.attachment_type.TEXT)

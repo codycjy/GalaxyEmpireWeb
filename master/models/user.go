@@ -8,7 +8,6 @@ type User struct {
 	gorm.Model
 	BaseCasbinEntity
 	Username string `gorm:"unique;not null" json:"username"`
-	// WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!
 	// NOTE: Checked in db, DO api check
 	Password string    `gorm:"not null" json:"password"`
 	Balance  int       ` json:"balance"`

@@ -1,11 +1,13 @@
 package jwtservice
 
 import (
+	"GalaxyEmpireWeb/logger"
 	"errors"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 )
 
 var jwtKey_test = []byte("ab9812bef66342192d64257d")
@@ -15,6 +17,7 @@ type userClaims struct {
 	jwt.RegisteredClaims
 }
 
+var log =  logger.GetLogger()
 func GenerateToken(UserID uint) (string, error) {
 	var expireTime = 24 * time.Hour
 	// 测试环境下token有效期为15s
@@ -22,6 +25,7 @@ func GenerateToken(UserID uint) (string, error) {
 	if os.Getenv("ENV") == "test" {
 		timestr := os.Getenv("TOKEN_EXPIRE_TIME")
 		expireTime, _ = time.ParseDuration(timestr)
+		log.Info("[jwtservice] Token expire time", zap.String("expireTime", timestr))
 		jwtKey = jwtKey_test
 	} else {
 		jwtKey = []byte(os.Getenv("JWT_KEY"))

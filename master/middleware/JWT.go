@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/services/jwtservice"
 	"GalaxyEmpireWeb/services/userservice"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
+var log = logger.GetLogger()
 
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -22,11 +25,14 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		userService, err := userservice.GetService(c)
+		log.Info("[middleware]JWTAuthMiddleware", zap.Uint("UserID", claims.UserID))
+
 		role := userService.GetUserRole(c, claims.UserID)
 		// 设置上下文
 		c.Set("claims", claims)
 		c.Set("role", role)
 		c.Set("userID", claims.UserID)
+		log.Info("[middleware]JWTAuthMiddleware", zap.String("traceID", c.GetString("traceID")), zap.Int("role", role))
 		c.Next()
 
 	}

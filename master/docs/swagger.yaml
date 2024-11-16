@@ -42,7 +42,7 @@ definitions:
       message:
         type: string
     type: object
-  auth.succeedResponse:
+  auth.authResponse:
     properties:
       token:
         type: string
@@ -118,9 +118,17 @@ definitions:
         $ref: '#/definitions/gorm.DeletedAt'
       id:
         type: integer
+      name:
+        type: string
       routeTasks:
+        description: many2many 关系
         items:
           $ref: '#/definitions/models.RouteTask'
+        type: array
+      ships:
+        description: 使用 hasMany 关系，指定外键
+        items:
+          $ref: '#/definitions/models.Ship'
         type: array
       updatedAt:
         type: string
@@ -130,7 +138,9 @@ definitions:
       accountID:
         type: integer
       accountInfo:
-        $ref: '#/definitions/models.AccountInfo'
+        allOf:
+        - $ref: '#/definitions/models.AccountInfo'
+        description: 'WARN: check gorm tag'
       createdAt:
         type: string
       deletedAt:
@@ -157,6 +167,26 @@ definitions:
         type: integer
       to:
         $ref: '#/definitions/models.Star'
+      updatedAt:
+        type: string
+    type: object
+  models.Ship:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      fleetID:
+        description: 外键，指向 Fleet
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      number:
+        type: integer
+      parm:
+        type: string
       updatedAt:
         type: string
     type: object
@@ -439,7 +469,7 @@ paths:
         "200":
           description: Successful response with JWT token
           schema:
-            $ref: '#/definitions/auth.succeedResponse'
+            $ref: '#/definitions/auth.authResponse'
         "400":
           description: Bad request with error message
           schema:
@@ -522,7 +552,7 @@ paths:
           description: Internal Server Error with error message
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: Crea user
+      summary: Create user
       tags:
       - user
     put:

@@ -301,7 +301,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with JWT token",
                         "schema": {
-                            "$ref": "#/definitions/auth.succeedResponse"
+                            "$ref": "#/definitions/auth.authResponse"
                         }
                     },
                     "400": {
@@ -398,7 +398,7 @@ const docTemplate = `{
                 "tags": [
                     "user"
                 ],
-                "summary": "Crea user",
+                "summary": "Create user",
                 "parameters": [
                     {
                         "description": "User ID or Username",
@@ -674,7 +674,7 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.succeedResponse": {
+        "auth.authResponse": {
             "type": "object",
             "properties": {
                 "token": {
@@ -789,10 +789,21 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "routeTasks": {
+                    "description": "many2many 关系",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.RouteTask"
+                    }
+                },
+                "ships": {
+                    "description": "使用 hasMany 关系，指定外键",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Ship"
                     }
                 },
                 "updatedAt": {
@@ -807,7 +818,12 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "accountInfo": {
-                    "$ref": "#/definitions/models.AccountInfo"
+                    "description": "WARN: check gorm tag",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AccountInfo"
+                        }
+                    ]
                 },
                 "createdAt": {
                     "type": "string"
@@ -847,6 +863,36 @@ const docTemplate = `{
                 },
                 "to": {
                     "$ref": "#/definitions/models.Star"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Ship": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "fleetID": {
+                    "description": "外键，指向 Fleet",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "integer"
+                },
+                "parm": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
