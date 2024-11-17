@@ -17,7 +17,8 @@ type userClaims struct {
 	jwt.RegisteredClaims
 }
 
-var log =  logger.GetLogger()
+var log = logger.GetLogger()
+
 func GenerateToken(UserID uint) (string, error) {
 	var expireTime = 24 * time.Hour
 	// 测试环境下token有效期为15s

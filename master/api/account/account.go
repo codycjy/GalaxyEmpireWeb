@@ -179,12 +179,12 @@ func CreateAccount(c *gin.Context) {
 		return
 
 	}
-	err1:= verifyAccount(c, &account)
+	err1 := verifyAccount(c, &account)
 	if err1 != nil {
 		log.Error("[api]Create Account failed",
 			zap.String("traceID", traceID),
 			zap.Error(err1),
-			)
+		)
 		c.JSON(err1.StatusCode(), api.ErrorResponse{
 			Succeed: false,
 			Error:   err1.Error(),

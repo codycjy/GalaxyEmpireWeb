@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
 var log = logger.GetLogger()
 
 func JWTAuthMiddleware() gin.HandlerFunc {

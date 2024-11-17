@@ -42,7 +42,7 @@ func GetUser(c *gin.Context) {
 	log.Info("[api]Get User by ID",
 		zap.String("id", idStr),
 		zap.String("traceID", traceID),
-		)
+	)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{

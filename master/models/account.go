@@ -19,6 +19,11 @@ type Account struct {
 	UserID     uint
 	RouteTasks []RouteTask `gorm:"foreignKey:AccountID"`
 }
+
+func (account Account) GetEntityPrefix() string {
+	return "account_"
+}
+
 type AccountInfo struct {
 	Username string `json:"username"`
 	Password string `json:"password"` // MD5 hash

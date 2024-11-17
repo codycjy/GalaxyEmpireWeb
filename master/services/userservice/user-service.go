@@ -84,7 +84,6 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), user.ID)
 	userID := strconv.Itoa(int(user.ID))
 
-	fmt.Println("service.Enforcer", service.Enforcer)
 	// 使用注入的Enforcer，统一处理错误
 	if _, err := service.Enforcer.AddPolicy(ctx, userID, obj, "read"); err != nil {
 		log.Error("[service]Add read policy failed",
@@ -355,7 +354,7 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 
 // Prepared for more complicated cases
 // Seem Useless currently lol
-func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw int) (allowed bool, err error) {
+func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw int) (allowed bool, err error) { // TODO: Check it
 	traceID := utils.TraceIDFromContext(ctx)
 	role := ctx.Value("role")
 	if role == nil {

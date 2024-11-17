@@ -26,12 +26,12 @@ func servicesInit(
 	mq *queue.RabbitMQConnection,
 	rdb *r.Client) {
 	captchaservice.InitCaptchaService(rdb)
-	enforcer ,err:=casbinservice.NewCasbinEnforcer(db, "config/model.conf")
+	enforcer, err := casbinservice.NewCasbinEnforcer(db, "config/model.conf")
 	if err != nil {
 		panic(err)
 	}
 	userservice.InitService(db, rdb, enforcer)
-	accountservice.InitService(db, rdb)
+	accountservice.InitService(db, rdb, enforcer)
 	taskservice.InitService(db, mq)
 }
 
