@@ -1,15 +1,16 @@
 package taskservice
 
 import (
+	"GalaxyEmpireWeb/config"
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
+	"GalaxyEmpireWeb/services/casbinservice"
 	"GalaxyEmpireWeb/utils"
 	"context"
-	"encoding/json"
 	"net/http"
+	"strconv"
 
-	"github.com/streadway/amqp"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -18,154 +19,153 @@ var taskServiceInstance *taskService
 var log = logger.GetLogger()
 
 type taskService struct {
-	DB *gorm.DB
-	MQ *queue.RabbitMQConnection
-}
-type QueueConfig struct {
-	Test []string `yaml:"test"`
-	Prod []string `yaml:"prod"`
+	DB       *gorm.DB
+	MQ       *queue.RabbitMQConnection
+	Enforcer casbinservice.Enforcer
 }
 
-func InitService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService {
+func GetService() *taskService {
 	if taskServiceInstance == nil {
-		taskServiceInstance = NewService(db, mq)
+		log.Fatal("Task Service Not Initialized")
 	}
-	for _, processor := range taskProcessors {
-		processor.InitService(db, mq)
-	}
-
-	taskGenerator := initTaskGenerator(db, mq, taskServiceInstance)
-	go taskGenerator.FindAllTasks()
-
 	return taskServiceInstance
 }
+func InitService(db *gorm.DB, mq *queue.RabbitMQConnection, enforcer casbinservice.Enforcer) {
+	taskServiceInstance = NewService(db, mq, enforcer)
+	taskServiceInstance.GenerateTaskLoop()
+	taskServiceInstance.ListenFromResultQueue(config.RESULT_QUEUE_NAME)
+}
 
-func NewService(db *gorm.DB, mq *queue.RabbitMQConnection) *taskService { // newService ?
+func NewService(db *gorm.DB, mq *queue.RabbitMQConnection, enforcer casbinservice.Enforcer) *taskService {
 	return &taskService{
-		DB: db,
-		MQ: mq,
+		DB:       db,
+		MQ:       mq,
+		Enforcer: enforcer,
 	}
 }
 
-func (s *taskService) SetupQueue(queue []string) {
-	for _, name := range queue {
-		_, err := s.MQ.Channel.QueueDeclare(
-			name,  // 队列名称
-			true,  // 是否持久化
-			false, // 是否自动删除
-			false, // 是否独占
-			false, // 是否阻塞
-			nil,   // 其他属性
-		)
+func (ts *taskService) AddTask(ctx context.Context, task *models.Task) *utils.ServiceError {
+	traceID := utils.TraceIDFromContext(ctx)
+	userID := utils.UserIDFromContext(ctx)
+	log.Info("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
-		if err != nil {
-			log.Fatal("Failed to declare a queue: %v",
-				zap.Error(err),
-			)
-		}
-
+	tran := ts.DB.Begin()
+	if err := tran.Create(task).Error; err != nil {
+		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, "Create Task Error", err)
 	}
-
-}
-
-func (s *taskService) sendMessage(message string, queue string) *utils.ServiceError {
-	err := s.MQ.Channel.Publish(
-		"",    // 交换机
-		queue, // 队列名称
-		false, // 是否返回
-		false, // 是否强制
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(message),
-		})
-	if err != nil {
-		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
+	sub := strconv.Itoa(int(task.AccountID))
+	obj := task.GetEntityPrefix() + strconv.Itoa(int(task.ID))
+	act := "write"
+	_, err1 := ts.Enforcer.AddPolicy(ctx, sub, obj, act)
+	if err1 != nil {
+		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err1))
+		tran.Rollback()
+		return utils.NewServiceError(http.StatusInternalServerError, "Casbin AddPolicy Error", err1)
 	}
+	act = "read"
+	_, err2 := ts.Enforcer.AddPolicy(ctx, sub, obj, act)
+	if err2 != nil {
+		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err2))
+		tran.Rollback()
+		return utils.NewServiceError(http.StatusInternalServerError, "Casbin AddPolicy Error", err2)
+	}
+	log.Info("[TaskService] AddTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
+
+	tran.Commit()
 	return nil
 }
 
-func (s *taskService) SendTask(task models.Task) *utils.ServiceError {
-	queue := task.QueueName()
-	jsonStr, err := json.Marshal(task)
-	if err != nil {
-		return utils.NewServiceError(http.StatusInternalServerError, "failed to encode task to JSON", err)
-	}
-	err = s.sendMessage(string(jsonStr), queue)
-	if err != nil {
-		return utils.NewServiceError(http.StatusInternalServerError, "Failed to send message", err)
-	}
-	return nil
-}
-func (s *taskService) ConsumeResponseQueue() {
-	queueName := ""
-
-	msgs, err := s.MQ.Channel.Consume(
-		queueName, // 队列名称
-		"",        // 消费者标签 - 不指定则由服务器生成
-		true,      // 自动应答
-		false,     // 独占模式
-		false,     // 不发送给同一连接的消费者
-		false,     // 阻塞
-		nil,       // 参数
-	)
-	if err != nil {
-		log.Fatal("Failed to register a consumer",
-			zap.Error(err),
-		)
-	}
-
-	go func() {
-		for msg := range msgs {
-			s.processResponseMessage(msg)
+func (ts *taskService) GetTaskByAccountID(ctx context.Context, accountID uint) ([]models.Task, *utils.ServiceError) {
+	traceID := utils.TraceIDFromContext(ctx)
+	userID := utils.UserIDFromContext(ctx)
+	log.Info("[TaskService] GetTaskByAccountID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("accountID", accountID))
+	var tasks []models.Task
+	if err := ts.DB.Where("account_id = ?", accountID).Find(&tasks); err.Error != nil {
+		if err.RowsAffected == 0 {
+			log.Warn("[TaskService] GetTaskByAccountID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("accountID", accountID), zap.Error(err.Error))
+			return nil, utils.NewServiceError(http.StatusNotFound, "Task Not Found", err.Error)
 		}
-	}()
+		log.Error("[TaskService] GetTaskByAccountID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("accountID", accountID), zap.Error(err.Error))
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "Get Task Error", err.Error)
+	}
+	return tasks, nil
 }
+func (ts *taskService) GetTaskByID(ctx context.Context, taskID uint) (*models.Task, *utils.ServiceError) {
+	traceID := utils.TraceIDFromContext(ctx)
+	userID := utils.UserIDFromContext(ctx)
+	var task models.Task
+	log.Info("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+	allowed, err := ts.Enforcer.Enforce(ctx, strconv.Itoa(int(userID)), task.GetEntityPrefix()+strconv.Itoa(int(task.ID)), "read")
 
-func (s *taskService) processResponseMessage(msg amqp.Delivery) {
-	// TODO: process response message
-	jsonStr := string(msg.Body)
-	log.Info("[service]Received a message: %s",
-		zap.String("json body", jsonStr),
-	)
-	var taskResponse models.TaskResponse
-	err := json.Unmarshal([]byte(jsonStr), &taskResponse)
 	if err != nil {
-		log.Error("[service]Unmarshal task response failed",
-			zap.Error(err),
-		)
-		msg.Ack(false)
+		log.Error("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
 	}
-	s.processTaskResponse(&taskResponse)
-	msg.Ack(false)
-
-}
-
-func (s *taskService) processTaskResponse(taskResponse *models.TaskResponse) {
-	if !taskResponse.Success {
-		s.taskRetry(taskResponse.TaskID)
-		return
+	if !allowed {
+		log.Warn("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+		return nil, utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
 	}
-	switch taskResponse.TaskType {
-	case models.RouteTaskName:
-		{
-			taskProcessors[models.RouteTaskName].ProcessTask(&taskResponse.Data)
+
+	if err := ts.DB.First(&task, taskID); err.Error != nil {
+		if err.RowsAffected == 0 {
+			log.Warn("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID), zap.Error(err.Error))
+			return nil, utils.NewServiceError(http.StatusNotFound, "Task Not Found", err.Error)
 		}
-	case models.PlanTaskName:
-		{
-			taskProcessors[models.PlanTaskName].ProcessTask(&taskResponse.Data)
-
-		}
-
-	}
-}
-func (s *taskService) taskRetry(taskID int) {
-
-}
-
-func (s *taskService) CreateTask(ctx context.Context, task models.Task) (*models.Task, error) {
-	err := s.DB.Create(&task).Error
-	if err != nil {
-		return nil, err
+		log.Error("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID), zap.Error(err.Error))
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "Get Task Error", err.Error)
 	}
 	return &task, nil
+}
+func (ts *taskService) UpdateTask(ctx context.Context, task *models.Task) *utils.ServiceError {
+	traceID := utils.TraceIDFromContext(ctx)
+	userID := utils.UserIDFromContext(ctx)
+	log.Info("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
+	allowed, err := ts.Enforcer.Enforce(ctx, strconv.Itoa(int(task.AccountID)), task.GetEntityPrefix()+strconv.Itoa(int(task.ID)), "write")
+	if err != nil {
+		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
+	}
+	if !allowed {
+		log.Warn("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
+		return utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
+	}
+
+	tran := ts.DB.Begin()
+	if err := tran.Save(task).Error; err != nil {
+		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, "Update Task Error", err)
+	}
+	log.Info("[TaskService] UpdateTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
+
+	tran.Commit()
+	return nil
+}
+func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.ServiceError {
+	traceID := utils.TraceIDFromContext(ctx)
+	userID := utils.UserIDFromContext(ctx)
+	log.Info("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+	var task models.Task
+	allowed, err := ts.Enforcer.Enforce(ctx, strconv.Itoa(int(userID)), task.GetEntityPrefix()+strconv.Itoa(int(task.ID)), "write")
+	if err != nil {
+		log.Error("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
+	}
+	if !allowed {
+		log.Warn("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+		return utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
+	}
+	result := ts.DB.Delete(&task, taskID)
+	if result.Error != nil {
+		log.Error("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(result.Error))
+		return utils.NewServiceError(http.StatusInternalServerError, "Delete Task Error", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		log.Warn("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+		return utils.NewServiceError(http.StatusNotFound, "Task Not Found", nil)
+	}
+
+	log.Info("[TaskService] DeleteTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+	return nil
+
 }

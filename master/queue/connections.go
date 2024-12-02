@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/streadway/amqp"
 )
@@ -69,4 +70,59 @@ func (r *RabbitMQConnection) Close() {
 	if r.Conn != nil {
 		r.Conn.Close()
 	}
+}
+
+func (rmq *RabbitMQConnection) SendNormalMessage(body string) error {
+	err := rmq.Channel.Publish(
+		"normal_exchange", // exchange
+		"normal_key",      // routing key
+		false,             // mandatory
+		false,             // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(body),
+		})
+	if err != nil {
+		return fmt.Errorf("failed to send normal message: %v", err)
+	}
+
+	return nil
+}
+
+func (rmq *RabbitMQConnection) SendDelayedMessage(body string, routingKey string, delay time.Duration) error {
+	delayMs := int(delay / time.Millisecond)
+	err := rmq.Channel.Publish(
+		config.DELAYED_EXCHANGE_NAME, // exchange
+		routingKey,                   // routing key
+		false,                        // mandatory
+		false,                        // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(body),
+			Headers: amqp.Table{
+				"x-delay": delayMs,
+			},
+		})
+	if err != nil {
+		return fmt.Errorf("failed to send delayed message: %v", err)
+	}
+
+	return nil
+}
+
+func (rmq *RabbitMQConnection) ConsumeNormalMessage(queueName string) (<-chan amqp.Delivery, error) {
+	msgs, err := rmq.Channel.Consume(
+		queueName, // queue
+		"",        // consumer
+		true,      // auto-ack
+		false,     // exclusive
+		false,     // no-local
+		false,     // no-wait
+		nil,       // args
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to consume normal message: %v", err)
+	}
+
+	return msgs, nil
 }

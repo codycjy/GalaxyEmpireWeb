@@ -68,14 +68,14 @@ definitions:
       id:
         type: integer
       password:
-        description: MD5 hash
+        description: 'MD5 hash TODO:'
         type: string
-      routeTasks:
-        items:
-          $ref: '#/definitions/models.RouteTask'
-        type: array
       server:
         type: string
+      tasks:
+        items:
+          $ref: '#/definitions/models.Task'
+        type: array
       updatedAt:
         type: string
       userID:
@@ -91,119 +91,136 @@ definitions:
         type: string
       id:
         type: integer
-      route_tasks:
+      server:
+        type: string
+      tasks:
         items:
-          $ref: '#/definitions/models.RouteTask'
+          $ref: '#/definitions/models.TaskDTO'
         type: array
-      server:
-        type: string
-      username:
-        type: string
-    type: object
-  models.AccountInfo:
-    properties:
-      password:
-        description: MD5 hash
-        type: string
-      server:
-        type: string
       username:
         type: string
     type: object
   models.Fleet:
     properties:
+      bomb:
+        type: integer
+      bs:
+        type: integer
+      cargo:
+        type: integer
+      cr:
+        type: integer
+      createdAt:
+        type: string
+      de:
+        type: integer
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      dr:
+        type: integer
+      ds:
+        type: integer
+      guard:
+        type: integer
+      hf:
+        type: integer
+      id:
+        type: integer
+      lf:
+        type: integer
+      satellite:
+        type: integer
+      task_id:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  models.Target:
+    properties:
       createdAt:
         type: string
       deletedAt:
         $ref: '#/definitions/gorm.DeletedAt'
+      galaxy:
+        type: integer
       id:
         type: integer
-      name:
-        type: string
-      routeTasks:
-        description: many2many 关系
-        items:
-          $ref: '#/definitions/models.RouteTask'
-        type: array
-      ships:
-        description: 使用 hasMany 关系，指定外键
-        items:
-          $ref: '#/definitions/models.Ship'
-        type: array
+      is_moon:
+        type: boolean
+      planet:
+        type: integer
+      system:
+        type: integer
+      task_id:
+        type: integer
       updatedAt:
         type: string
     type: object
-  models.RouteTask:
+  models.Task:
     properties:
-      accountID:
+      account_id:
         type: integer
-      accountInfo:
-        allOf:
-        - $ref: '#/definitions/models.AccountInfo'
-        description: 'WARN: check gorm tag'
       createdAt:
         type: string
       deletedAt:
         $ref: '#/definitions/gorm.DeletedAt'
       enabled:
         type: boolean
-      fleets:
-        items:
-          $ref: '#/definitions/models.Fleet'
-        type: array
-      from:
-        $ref: '#/definitions/models.Star'
+      fleet:
+        $ref: '#/definitions/models.Fleet'
       id:
         type: integer
-      logs:
-        items:
-          $ref: '#/definitions/models.taskLog'
-        type: array
       name:
         type: string
+      next_index:
+        type: integer
       next_start:
         type: string
       repeat:
         type: integer
-      to:
-        $ref: '#/definitions/models.Star'
+      target_num:
+        type: integer
+      targets:
+        items:
+          $ref: '#/definitions/models.Target'
+        type: array
+      task_type:
+        type: integer
       updatedAt:
         type: string
     type: object
-  models.Ship:
+  models.TaskDTO:
     properties:
+      account_id:
+        type: integer
       createdAt:
         type: string
       deletedAt:
         $ref: '#/definitions/gorm.DeletedAt'
-      fleetID:
-        description: 外键，指向 Fleet
-        type: integer
+      enabled:
+        type: boolean
+      fleet:
+        $ref: '#/definitions/models.Fleet'
       id:
         type: integer
       name:
         type: string
-      number:
+      next_index:
         type: integer
-      parm:
+      next_start:
         type: string
+      repeat:
+        type: integer
+      target_num:
+        type: integer
+      targets:
+        items:
+          $ref: '#/definitions/models.Target'
+        type: array
+      task_type:
+        type: integer
       updatedAt:
         type: string
-    type: object
-  models.Star:
-    properties:
-      galaxy:
-        description: 'gorm.Model // NOTE: Is this necessary?'
-        type: integer
-      is_moon:
-        type: boolean
-      location:
-        type: integer
-      solar:
-        type: integer
-      star_id:
-        description: For node use enemy will be empty
-        type: integer
     type: object
   models.User:
     properties:
@@ -220,9 +237,7 @@ definitions:
       id:
         type: integer
       password:
-        description: |-
-          WARNING: USERNAME MAY BE NOT UNIQUE! RECHECK THIS!
-          NOTE: Checked in db, DO api check
+        description: 'NOTE: Checked in db, DO api check'
         type: string
       role:
         description: '0: normal user, 1: admin'
@@ -245,21 +260,22 @@ definitions:
       username:
         type: string
     type: object
-  models.taskLog:
+  task.accountTaskResponse:
     properties:
-      createdAt:
+      data:
+        $ref: '#/definitions/models.AccountDTO'
+      succeed:
+        type: boolean
+      traceID:
         type: string
-      deletedAt:
-        $ref: '#/definitions/gorm.DeletedAt'
-      id:
-        type: integer
-      referID:
-        description: 引用的 Task ID
-        type: integer
-      referType:
-        description: 引用的 Task 类型
-        type: string
-      updatedAt:
+    type: object
+  task.taskResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.TaskDTO'
+      succeed:
+        type: boolean
+      traceID:
         type: string
     type: object
   user.userResponse:
@@ -496,6 +512,102 @@ paths:
       summary: ping example
       tags:
       - example
+  /task:
+    post:
+      consumes:
+      - application/json
+      description: Add a task
+      parameters:
+      - description: Task
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/models.Task'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with task ID
+          schema:
+            $ref: '#/definitions/task.taskResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Add a task
+      tags:
+      - task
+  /task/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get Task by ID
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with task data
+          schema:
+            $ref: '#/definitions/task.taskResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get task by ID
+      tags:
+      - task
+  /task/account/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get Task by Account ID
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with account data
+          schema:
+            $ref: '#/definitions/task.accountTaskResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get task by Account ID
+      tags:
+      - task
   /user:
     delete:
       consumes:

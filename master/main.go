@@ -32,7 +32,7 @@ func servicesInit(
 	}
 	userservice.InitService(db, rdb, enforcer)
 	accountservice.InitService(db, rdb, enforcer)
-	taskservice.InitService(db, mq)
+	taskservice.InitService(db, mq, enforcer)
 }
 
 var db *gorm.DB

@@ -139,7 +139,6 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 		zap.String("username", account.Username),
 		zap.String("traceID", traceID),
 	)
-	fmt.Println(account)
 	account.UserID = userID
 	err := service.DB.Create(account).Error
 	if err != nil {
@@ -218,6 +217,7 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 		zap.Uint("userId", ID),
 		zap.String("traceID", traceID),
 	)
+
 	allowed, serviceErr := service.isUserAllowed(ctx, ID, casbinservice.WRITE)
 	if serviceErr != nil {
 		return serviceErr
@@ -228,26 +228,23 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 		)
 		return utils.NewServiceError(http.StatusUnauthorized, "User has no Permission", nil)
 	}
+
 	result := service.DB.Delete(&models.Account{}, ID)
-	err := result.Error
-	if result.RowsAffected == 0 {
-		return utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
-	}
-	if err != nil {
+	if result.Error != nil {
 		log.Info("[service]Delete Account failed",
 			zap.String("traceID", traceID),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError, "Failed to delete user", err)
-
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to delete user", result.Error)
 	}
+
 	if result.RowsAffected == 0 {
 		log.Warn("[server]Delete Account failed - no such user",
 			zap.String("traceID", traceID),
 		)
 		return utils.NewServiceError(http.StatusNotFound, "Account not found", nil)
 	}
-	return nil
 
+	return nil
 }
 
 // ________________________________
