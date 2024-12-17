@@ -178,4 +178,4 @@ yamls/
 allure-results/
 
 # Project specific config files
-**/master/config/yaml/*
+/master/config/yaml/

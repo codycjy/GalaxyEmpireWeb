@@ -68,4 +68,4 @@ logs
 .yarn-integrity
 
 # Project specific config files
-/config/yaml/*
+../config/yaml/*
