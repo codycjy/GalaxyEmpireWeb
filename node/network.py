@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import requests
 from utils import crypto, md5
 from config import serverUrlList
@@ -16,6 +17,13 @@ def addArgs(args):  # TODO: move me later
     for i in args.items():
         ans += '&' + str(i[0]) + '=' + str(i[1])
     return ans
+
+
+@dataclass
+class NetworkResponse:
+    status: int
+    data: dict
+    err_msg: str = ""
 
 
 class Network:
@@ -68,10 +76,11 @@ class Network:
             self.ppy_id = loginResult['ppy_id']
             self.ssid = loginResult['ssid']
             print("Login Success")
-            return {'status': 0}
+            return NetworkResponse(status=0, data=loginResult)
         else:
             print("login failed")
-            return {'status': -1}
+            loginResult = result.get('data')
+            return NetworkResponse(status=-1, err_msg=result.get('err_msg', "Login failed"), data={})
 
     def getSession(self):
         return {"sess_id": self.ssid, "ppy_id": self.ppy_id}

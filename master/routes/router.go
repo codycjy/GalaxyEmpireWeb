@@ -4,6 +4,7 @@ import (
 	"GalaxyEmpireWeb/api"
 	"GalaxyEmpireWeb/api/account"
 	"GalaxyEmpireWeb/api/auth"
+	"GalaxyEmpireWeb/api/task"
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
 	"GalaxyEmpireWeb/middleware"
@@ -52,6 +53,16 @@ func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
 		a.GET("/user/:userid", account.GetAccountByUserID)
 		a.POST("", account.CreateAccount)
 		a.DELETE("", account.DeleteAccount)
+		a.POST("/check", account.CheckAccountAvailable)
+		a.GET("/check/:uuid", account.CheckAccountByUUID)
+	}
+	t := v1.Group("/task")
+	{
+		t.GET("/:id", task.GetTaskByID)
+		t.GET("/account/:id", task.GetTaskByAccountID)
+		t.POST("", task.AddTask)
+		t.DELETE("", task.DeleteTask)
+		t.PUT("", task.UpdateTask)
 	}
 
 	return r

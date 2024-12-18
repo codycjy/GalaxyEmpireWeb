@@ -19,10 +19,17 @@ class MissionType(Enum):
     ESCAPE = "escape"  # TODO: check this later
 
 
+class TaskStatus(Enum):
+    RUNNING = 0
+    SUCCESS = 1
+    FAILED = 2
+
+
 @dataclass_json
 @dataclass
 class Task:
     task_id: int
+    uuid: str
     task_type: TaskType
     account: Account
     fleet: Fleet
@@ -34,9 +41,10 @@ class Task:
 @dataclass
 class TaskResult:
     task_id: int
-    status: int
+    status: TaskStatus
     task_type: TaskType
-    back_ts: int
+    uuid: str
+    back_ts: int = 0
 
 
 if __name__ == "__main__":

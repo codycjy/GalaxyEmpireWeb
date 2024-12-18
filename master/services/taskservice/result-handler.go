@@ -21,11 +21,12 @@ func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (
 	}
 	if response.TaskType != models.TaskTypeMap[models.TASKTYPE_LOGIN] {
 		task.Status = models.TaskStatusMap[models.TASK_STATUS_READY]
-		task.NextStart = time.Unix(response.BackTimestamp, 0).Add(config.TASK_DELAY)
+		task.NextStart = response.BackTimestamp + config.TASK_DELAY
 		return &task, nil
 	}
 	if response.TaskType == models.TaskTypeMap[models.TASKTYPE_LOGIN] {
-		return &task, nil
+		ts.DB.Model(&models.TaskLog{}).Where("uuid = ?", response.UUID).Update("status", models.TASK_RESULT_SUCCESS)
+		return nil, nil // We don't need to save login task
 	}
 
 	return nil, errors.New("Failed to handle single result")

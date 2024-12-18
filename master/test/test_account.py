@@ -5,6 +5,7 @@ import pytest
 
 from testcase.test_data import auth_test_data
 
+
 @allure.feature("账户模块")
 class TestAccount:
     @allure.story("根据用户id查询账户")

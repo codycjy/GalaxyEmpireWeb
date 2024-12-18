@@ -1021,10 +1021,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "next_start": {
-                    "type": "string"
+                    "description": "Unix timestamp seconds",
+                    "type": "integer"
                 },
                 "repeat": {
                     "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 },
                 "target_num": {
                     "type": "integer"

@@ -6,6 +6,7 @@ import time
 
 from testcase.test_data import auth_test_data
 
+
 @allure.feature("登录注册模块")
 class TestAuth:
     @allure.story("登录")

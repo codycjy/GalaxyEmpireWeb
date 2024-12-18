@@ -239,6 +239,12 @@ func DeleteAccount(c *gin.Context) {
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Bad Request",
+			TraceID: traceID,
+		})
 	}
 	accountService, _ := accountservice.GetService(c)
 	serviceErr := accountService.Delete(c, account.ID)
@@ -263,6 +269,85 @@ func DeleteAccount(c *gin.Context) {
 
 }
 
+type accountCheckingResponse struct {
+	Succeed bool   `json:"succeed"`
+	TraceID string `json:"traceID"`
+	UUID    string `json:"uuid"`
+}
+
+// CheckAccountAvailable godoc
+// @Summary Check Account Available
+// @Description Check Account Available
+// @Tags account
+// @Accept json
+// @Produce json
+// @Param account body models.Account true "Account"
+// @Success 200 {object} accountCheckingResponse "Successful response with account data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error"
+// @Router /account/check [POST]
+
+func CheckAccountAvailable(c *gin.Context) {
+	traceID := utils.TraceIDFromContext(c)
+	var account models.Account
+	err := c.ShouldBindJSON(&account)
+	if err != nil {
+		log.Error("[api]Check Account Available failed",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Bad Request",
+			TraceID: traceID,
+		})
+	}
+	accountService, _ := accountservice.GetService(c)
+	uuid, serviceErr := accountService.RequestCheckingAccountLogin(c, &account)
+	if serviceErr != nil {
+		log.Error("[api]Check Account Available failed",
+			zap.String("traceID", traceID),
+			zap.Error(serviceErr),
+		)
+		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   serviceErr.Error(),
+			Message: serviceErr.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, accountCheckingResponse{
+		Succeed: false, // Keep false because the task is not done yet
+		TraceID: traceID,
+		UUID:    uuid,
+	})
+}
+
+// CheckAccountByUUID godoc
+// @Summary Check Account By UUID
+// @Description Check Account By UUID
+// @Tags Account
+// @Param uuid path string true "UUID"
+// @Produce JSON
+// @Success 200 {object} accountCheckingResponse "Successful response with account data"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error"
+// @Router /account/check/{uuid} [GET]
+
+func CheckAccountByUUID(c *gin.Context) {
+	traceID := utils.TraceIDFromContext(c)
+	uuid := c.Param("uuid")
+	accountService, _ := accountservice.GetService(c)
+	result := accountService.GetLoginInfo(c, uuid)
+	c.JSON(http.StatusOK, accountCheckingResponse{
+		Succeed: result,
+		TraceID: traceID,
+		UUID:    uuid,
+	})
+
+}
 func verifyAccount(c *gin.Context, account *models.Account) *utils.ApiError {
 	if account.Username == "" {
 		return utils.NewApiError(http.StatusBadRequest, "Username is required", errors.New("Username is required"))

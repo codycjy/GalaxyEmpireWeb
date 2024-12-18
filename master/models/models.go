@@ -1,8 +1,7 @@
 package models
 
 import (
-	"log"
-
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +12,7 @@ func AutoMigrate(db *gorm.DB) {
 		&Fleet{},
 	)
 	if err != nil {
-		log.Fatalf("Error during migration: %v", err)
+		log.Fatal("Error during migration: %v",
+			zap.Error(err))
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/casbinservice"
+	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/utils"
 	"context"
 	"errors"
@@ -247,6 +248,34 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 	return nil
 }
 
+func (service *accountService) RequestCheckingAccountLogin(ctx context.Context, account *models.Account) (string, *utils.ServiceError) {
+	traceID := utils.TraceIDFromContext(ctx)
+	log.Info("[service]Check Account Available",
+		zap.String("traceID", traceID),
+		zap.String("username", account.Username),
+	)
+	taskservice := taskservice.GetService()
+	uuid, err := taskservice.CheckAccountLogin(ctx, account)
+	if err != nil {
+		log.Error("[service]Check Account Available failed",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		return "", err
+	}
+	return uuid, nil
+}
+
+func (serveice *accountService) GetLoginInfo(ctx context.Context, uuid string) bool {
+	traceID := utils.TraceIDFromContext(ctx)
+	log.Info("[service]Get Login Info",
+		zap.String("traceID", traceID),
+		zap.String("uuid", uuid),
+	)
+	taskservice := taskservice.GetService()
+	return taskservice.GetLoginInfo(ctx, uuid)
+}
+
 // ________________________________
 // |  Private Functions         |
 func (service *accountService) isUserAllowed(ctx context.Context, accountID uint, rw int) (bool, *utils.ServiceError) {
@@ -282,105 +311,4 @@ func (service *accountService) isUserAllowed(ctx context.Context, accountID uint
 	)
 
 	return allowed, nil
-}
-
-// func (service *accountService) isUserAllowed(ctx context.Context, accountID uint) (bool, *utils.ServiceError) { // TODO: rewrite with casbin
-// 	traceID := utils.TraceIDFromContext(ctx)
-// 	userID1 := ctx.Value("userID")
-// 	if userID1 == nil {
-// 		log.Warn("[service]Check User Permission - No userID in context",
-// 			zap.String("traceID", traceID),
-// 			)
-// 		return false, utils.NewServiceError(http.StatusInternalServerError, "No userID in context", nil)
-// 	}
-// 	userID := userID1.(uint)
-// 	log.Info("[service]Check User Permission",
-// 		zap.Uint("userID", userID),
-// 		zap.Uint("accountID", accountID),
-// 		zap.String("traceID", traceID),
-// 		)
-// 	if userID == 0 {
-// 		log.Warn("[service]Check User Permission - No userID in context",
-// 			zap.String("traceID", traceID),
-// 			)
-// 		return false, utils.NewServiceError(http.StatusInternalServerError, "No userID in context", nil)
-// 	}
-// 	key := fmt.Sprintf("%s%d", accountListPrefix, userID)
-//
-// 	// 首先检查键是否存在
-// 	exists, err := service.RDB.Exists(ctx, key).Result()
-// 	if err != nil {
-// 		log.Warn("[service]Check User Permission failed - redis check exists",
-// 			zap.String("traceID", traceID),
-// 			zap.String("redis_key", key),
-// 			zap.Error(err),
-// 			)
-// 	}
-// 	if exists == 0 {
-// 		log.Info("[service]Check User Permission - Not in Redis. Retrieving",
-// 			zap.String("traceID", traceID),
-// 			)
-// 		accounts, err := service.GetByUserId(ctx, userID, []string{})
-// 		if err != nil {
-// 			return false, utils.NewServiceError(http.StatusInternalServerError, "Service Error", err)
-// 		}
-// 		var accountIDs = make([]uint, len(*accounts))
-// 		// NOTE: Could be optimized by early return
-// 		for i, account := range *accounts {
-// 			accountIDs[i] = account.ID
-// 		}
-// 		serviceErr := service.cacheUserAccounts(ctx, userID, accountIDs)
-// 		if serviceErr != nil {
-// 			return false, serviceErr
-// 		}
-//
-// 	}
-//
-// 	// 如果键存在，检查集合中是否包含特定元素
-// 	isMember, err := service.RDB.SIsMember(ctx, key, accountID).Result()
-// 	if !isMember {
-// 		if err != nil {
-// 			log.Error("[service]Check User Permission - failed（1）",
-// 				zap.String("traceID", traceID),
-// 				zap.String("redis_key", key),
-// 				zap.Error(err),
-// 				)
-// 			return false, utils.NewServiceError(http.StatusInternalServerError, "redis retrieve error", err)
-// 		}
-// 		return false, nil
-// 	}
-// 	log.Info("[service]Check User Permission - Success",
-// 		zap.String("traceID", traceID),
-// 		zap.Bool("isMember", isMember),
-// 		)
-// 	return isMember, nil
-// }
-
-func (service *accountService) cacheUserAccounts(ctx context.Context, userID uint, accountIDs []uint) *utils.ServiceError {
-	key := fmt.Sprintf("%s%d", accountListPrefix, userID)
-
-	// 使用pipeline批量添加元素以提高性能
-	pipe := service.RDB.Pipeline()
-	for _, accountID := range accountIDs {
-		pipe.SAdd(ctx, key, accountID)
-	}
-
-	pipe.Expire(ctx, key, expireTime)
-
-	// 执行pipeline
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		log.Error("[service]Error caching user accounts",
-			zap.Uint("userID", userID),
-			zap.Error(err),
-		)
-		return utils.NewServiceError(http.StatusInternalServerError, "redis cache error", err)
-	}
-
-	log.Info("[service]User accounts cached successfully",
-		zap.Uint("userID", userID),
-		zap.Int("accountsCount", len(accountIDs)),
-	)
-
-	return nil
 }

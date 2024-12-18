@@ -72,12 +72,12 @@ func (r *RabbitMQConnection) Close() {
 	}
 }
 
-func (rmq *RabbitMQConnection) SendNormalMessage(body string) error {
+func (rmq *RabbitMQConnection) SendNormalMessage(body string, routingKey string) error {
 	err := rmq.Channel.Publish(
-		"normal_exchange", // exchange
-		"normal_key",      // routing key
-		false,             // mandatory
-		false,             // immediate
+		"",         // exchange
+		routingKey, // routing key
+		false,      // mandatory
+		false,      // immediate
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        []byte(body),

@@ -5,13 +5,16 @@ import requests
 import time
 from testcase.test_data import auth_test_data
 
+
 @pytest.fixture(scope="session")
 def base_url():
     return "http://localhost:9333/api/v1/"
 
+
 @pytest.fixture(scope="session")
 def session():
     return requests.Session()
+
 
 @pytest.fixture(scope="session")
 def register_user(session, base_url):
@@ -56,6 +59,7 @@ def register_user(session, base_url):
         "token": token,
         "session": session
     }
+
 
 @pytest.fixture(scope="session")
 def register_cross_user(session, base_url):

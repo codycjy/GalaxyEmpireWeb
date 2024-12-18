@@ -1,11 +1,12 @@
 package models
 
 import (
+	"GalaxyEmpireWeb/logger"
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +25,8 @@ const (
 	TASK_STATUS_READY
 )
 
+var log = logger.GetLogger()
+
 var TaskTypeMap = map[int]int{
 	TASKTYPE_ATTACK:  1,
 	TASKTYPE_EXPLORE: 4,
@@ -39,19 +42,25 @@ var TaskStatusMap = map[int]string{
 	TASK_STATUS_READY:   "ready",
 } // TODO: need to rethink the status
 
+const (
+	TASK_RESULT_RUNNING = 0
+	TASK_RESULT_SUCCESS = 1
+	TASK_RESULT_FAILED  = 2
+)
+
 type Task struct {
 	gorm.Model
-	Name      string    `json:"name"`
-	NextStart time.Time `json:"next_start"`
-	Enabled   bool      `json:"enabled"`
-	AccountID uint      `json:"account_id"`
-	TaskType  int       `json:"task_type"`
-	Status    string    `json:"status"`
-	Targets   []Target  `json:"targets" gorm:"foreignKey:TaskID"`
-	Repeat    int       `json:"repeat"`
-	NextIndex int       `json:"next_index"`
-	TargetNum int       `json:"target_num"`
-	Fleet     Fleet     `json:"fleet" gorm:"foreignKey:TaskID"`
+	Name      string   `json:"name"`
+	NextStart int64    `json:"next_start"` // Unix timestamp seconds
+	Enabled   bool     `json:"enabled"`
+	AccountID uint     `json:"account_id"`
+	TaskType  int      `json:"task_type"`
+	Status    string   `json:"status"`
+	Targets   []Target `json:"targets" gorm:"foreignKey:TaskID"`
+	Repeat    int      `json:"repeat"`
+	NextIndex int      `json:"next_index"`
+	TargetNum int      `json:"target_num"`
+	Fleet     Fleet    `json:"fleet" gorm:"foreignKey:TaskID"`
 }
 
 func (t Task) ToDTO() *TaskDTO {
@@ -64,11 +73,17 @@ func (t Task) GetEntityPrefix() string {
 }
 func (t *Task) ToSingleTaskRequest() (*SingleTaskRequest, error) {
 	if t.NextIndex >= len(t.Targets) {
-		return nil, errors.New("NextIndex out of range")
+		log.Warn("Task::ToSingleTaskRequest: NextIndex out of range")
+		if len(t.Targets) == 0 {
+			return nil, errors.New("Task::ToSingleTaskRequest: No targets")
+		} else {
+			t.NextIndex = 0
+		}
 	}
 
 	return &SingleTaskRequest{
 		TaskID:    t.ID,
+		UUID:      uuid.NewString(),
 		Name:      t.Name,
 		NextStart: t.NextStart,
 		Enabled:   t.Enabled,
@@ -99,8 +114,9 @@ type TaskDTO struct { // TODO: finish func
 
 type SingleTaskRequest struct {
 	TaskID    uint        `json:"task_id"`
+	UUID      string      `json:"uuid"`
 	Name      string      `json:"name"`
-	NextStart time.Time   `json:"next_start"`
+	NextStart int64       `json:"next_start"` // Unix timestamp seconds
 	Enabled   bool        `json:"enabled"`
 	Account   AccountInfo `json:"account"`
 	TaskType  int         `json:"task_type"`
@@ -109,10 +125,12 @@ type SingleTaskRequest struct {
 	Fleet     Fleet       `json:"fleet"`
 }
 type SingleTaskResponse struct {
-	TaskID        uint  `json:"task_id"`
-	Status        int   `json:"status"` // 0 success, -1 failed
-	TaskType      int   `json:"task_type"`
-	BackTimestamp int64 `json:"back_timestamp"`
+	TaskID        uint   `json:"task_id"`
+	UUID          string `json:"uuid"`
+	Status        int    `json:"status"` // 0 success, -1 failed
+	TaskType      int    `json:"task_type"`
+	BackTimestamp int64  `json:"back_timestamp"`
+	Message       string `json:"message"`
 }
 
 type TaskResponse struct {

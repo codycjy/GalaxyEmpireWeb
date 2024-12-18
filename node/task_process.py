@@ -22,7 +22,7 @@ class TaskProcessor:
         task_id = task.task_id
         try:
             if task.task_type == TaskType.LOGIN:
-                Thread(target=login_action, args=(task.user, self.result_queue)).start()
+                Thread(target=login_action, args=(task, self.result_queue)).start()
             elif task.task_type == TaskType.ATTACK:
                 Thread(target=attack_action, args=(task, self.result_queue)).start()
             elif task.task_type == TaskType.EXPLORE:
