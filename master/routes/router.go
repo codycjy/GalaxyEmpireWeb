@@ -19,7 +19,7 @@ import (
 func init() {
 }
 
-func RegisterRoutes(serviceMap map[string]interface{}) *gin.Engine {
+func RegisterRoutes() *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.TraceIDMiddleware())
 	docs.SwaggerInfo.BasePath = "/api/v1"

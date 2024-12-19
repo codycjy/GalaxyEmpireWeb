@@ -12,14 +12,13 @@ import (
 	"GalaxyEmpireWeb/services/casbinservice"
 	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/services/userservice"
+	"fmt"
 	"os"
 
 	r "github.com/redis/go-redis/v9"
 
 	"gorm.io/gorm"
 )
-
-var services = make(map[string]interface{})
 
 func servicesInit(
 	db *gorm.DB,
@@ -52,7 +51,9 @@ func main() {
 
 	models.AutoMigrate(db)
 	servicesInit(db, mq, rdb)
+	fmt.Println("Server is running on port 9333")
 
-	r := routes.RegisterRoutes(services)
+	r := routes.RegisterRoutes()
 	r.Run(":9333")
+
 }
