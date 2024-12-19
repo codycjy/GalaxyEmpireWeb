@@ -32,8 +32,9 @@ func GetService() *taskService {
 }
 func InitService(db *gorm.DB, mq *queue.RabbitMQConnection, enforcer casbinservice.Enforcer) {
 	taskServiceInstance = NewService(db, mq, enforcer)
-	taskServiceInstance.GenerateTaskLoop()
-	taskServiceInstance.ListenFromResultQueue(config.RESULT_QUEUE_NAME)
+	go taskServiceInstance.GenerateTaskLoop()
+	go taskServiceInstance.ListenFromResultQueue(config.RESULT_QUEUE_NAME)
+	db.AutoMigrate(&models.Task{}, &models.TaskLog{})
 }
 
 func NewService(db *gorm.DB, mq *queue.RabbitMQConnection, enforcer casbinservice.Enforcer) *taskService {

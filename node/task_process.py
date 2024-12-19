@@ -22,10 +22,13 @@ class TaskProcessor:
         task_id = task.task_id
         try:
             if task.task_type == TaskType.LOGIN:
+                logging.info(f"Processing login task: {task.uuid}")
                 Thread(target=login_action, args=(task, self.result_queue)).start()
             elif task.task_type == TaskType.ATTACK:
+                logging.info(f"Processing attack task: {task.uuid}")
                 Thread(target=attack_action, args=(task, self.result_queue)).start()
             elif task.task_type == TaskType.EXPLORE:
+                logging.info(f"Processing explore task: {task.uuid}")
                 Thread(target=explore_action, args=(task, self.result_queue)).start()
         except Exception as e:
             print(f"Error processing task: {e}")

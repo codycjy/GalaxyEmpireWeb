@@ -34,7 +34,7 @@ def publish_results(queue_name: str,):
         if result.task_id not in retry_count:
             retry_count[result.task_id] = 0
 
-        succeed = rabbitmq.publish(queue_name, str(result))
+        succeed = rabbitmq.publish(queue_name, str(result.to_json()))
         logging.info(f"Published task result: {result}")
 
         if not succeed:
@@ -51,9 +51,6 @@ def publish_results(queue_name: str,):
 
 def main():
     rabbitmq.connect()
-    rabbitmq.exchange_declare(DELAY_EXCHANGE, is_delay=True)
-    rabbitmq.setup_queue(TASK_QUEUE, exchange_name=DELAY_EXCHANGE)
-    rabbitmq.setup_queue(RESULT_QUEUE)
 
     def callback(ch, method, properties, body):
         message = json.loads(body.decode())

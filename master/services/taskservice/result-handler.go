@@ -16,15 +16,17 @@ func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (
 	}
 	var task models.Task
 	task.ID = response.TaskID
-	if response.Status != 0 {
+	if response.Status != models.TASK_RESULT_SUCCESS {
+		log.Error("Task failed", zap.String("uuid", response.UUID))
 		return nil, errors.New("response status is not 0")
 	}
-	if response.TaskType != models.TaskTypeMap[models.TASKTYPE_LOGIN] {
+	if response.TaskType != models.TASKTYPE_LOGIN {
+		log.Info("Task succeeded", zap.String("uuid", response.UUID))
 		task.Status = models.TaskStatusMap[models.TASK_STATUS_READY]
 		task.NextStart = response.BackTimestamp + config.TASK_DELAY
 		return &task, nil
 	}
-	if response.TaskType == models.TaskTypeMap[models.TASKTYPE_LOGIN] {
+	if response.TaskType == models.TASKTYPE_LOGIN {
 		ts.DB.Model(&models.TaskLog{}).Where("uuid = ?", response.UUID).Update("status", models.TASK_RESULT_SUCCESS)
 		return nil, nil // We don't need to save login task
 	}

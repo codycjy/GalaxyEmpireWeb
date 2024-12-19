@@ -16,6 +16,7 @@ import (
 func (ts *taskService) CheckAccountLogin(ctx context.Context, account *models.Account) (string, *utils.ServiceError) {
 	uuid := uuid.New().String()
 	tx := ts.DB.Begin()
+	log.Info("[TaskService::CheckAccouuntLogin] start to check account login", zap.String("uuid", uuid))
 	taskLog := models.TaskLog{
 		TaskID: 0, // Not in DB
 		UUID:   uuid,
@@ -37,13 +38,14 @@ func (ts *taskService) CheckAccountLogin(ctx context.Context, account *models.Ac
 		tx.Rollback()
 		return "", utils.NewServiceError(http.StatusInternalServerError, "Marshal Task Error", err2)
 	}
-	routingKey := config.INSTANT_QUEUE_NAME
-	if err3 := ts.MQ.SendNormalMessage(routingKey, string(taskJSON)); err3 != nil {
+	routingKey := config.TASK_QUEUE_NAME // TODO: whether to use INSTANT_QUEUE_NAME
+	if err3 := ts.MQ.SendNormalMessage(string(taskJSON), routingKey); err3 != nil {
 		log.Error("[TaskService::CheckAccouuntLogin] failed to publish task", zap.Error(err3))
 		tx.Rollback()
 		return "", utils.NewServiceError(http.StatusInternalServerError, "Publish Task Error", err3)
 	}
 	tx.Commit()
+	log.Info("[TaskService::CheckAccouuntLogin] task published", zap.String("uuid", uuid), zap.String("routingKey", routingKey))
 
 	// Wait for the task to be done
 	// Get info at another func
@@ -73,7 +75,7 @@ func (ts *taskService) GetLoginInfo(ctx context.Context, uuid string) bool {
 		time.Sleep(1 * time.Second)
 
 	}
-	log.Warn("[TaskService::GetLoginInfo] login timeout", zap.String("uuid", uuid)) // TODO: manual check
+	log.Warn("[TaskService::GetLoginInfo] login timeout", zap.String("uuid", uuid))
 	return false
 
 }
