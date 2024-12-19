@@ -53,7 +53,70 @@ func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 // InitConnection 初始化 RabbitMQ 连接
 func InitConnection() {
 	rabbitMQConnection = NewRabbitMQConnection(config.GetRabbitMQConfig())
+	InitDeclare()
 
+}
+func InitDeclare() {
+	log.Println("InitDeclare")
+	log.Println("DeclareDelayedExchange")
+	DeclareDelayedExchange(rabbitMQConnection.Channel)
+	log.Println(fmt.Sprintf("DeclareQueue %s", config.TASK_QUEUE_NAME))
+	DeclareQueue(rabbitMQConnection.Channel, config.TASK_QUEUE_NAME)
+	log.Println(fmt.Sprintf("DeclareQueue %s", config.RESULT_QUEUE_NAME))
+	DeclareQueue(rabbitMQConnection.Channel, config.RESULT_QUEUE_NAME)
+	log.Println(fmt.Sprintf("DeclareQueue %s", config.INSTANT_QUEUE_NAME))
+	DeclareQueue(rabbitMQConnection.Channel, config.INSTANT_QUEUE_NAME)
+	log.Println("BindQueue")
+	log.Println(fmt.Sprintf("BindQueue %s %s %s", config.TASK_QUEUE_NAME, config.TASK_QUEUE_NAME, config.DELAYED_EXCHANGE_NAME))
+	BindQueue(rabbitMQConnection.Channel, config.TASK_QUEUE_NAME, config.TASK_QUEUE_NAME, config.DELAYED_EXCHANGE_NAME)
+	// Bind task queue to delayed exchange
+}
+
+func DeclareDelayedExchange(ch *amqp.Channel) error {
+	err := ch.ExchangeDeclare(
+		config.DELAYED_EXCHANGE_NAME,
+		"x-delayed-message",
+		true,
+		false,
+		false,
+		false,
+		map[string]interface{}{
+			"x-delayed-type": "direct",
+		},
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare delayed exchange: %v", err)
+	}
+	return nil
+}
+
+func DeclareQueue(ch *amqp.Channel, queueName string) error {
+	_, err := ch.QueueDeclare(
+		queueName, // queueName
+		true,      // durable
+		false,     // autoDelete
+		false,     // exclusive
+		false,     // noWait
+		nil,       // args
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare queue: %v", err)
+	}
+	return nil
+}
+
+func BindQueue(ch *amqp.Channel, queueName string, routingKey string, exchangeName string) error {
+	err := ch.QueueBind(
+		queueName,    // queueName
+		routingKey,   // routingKey
+		exchangeName, // exchangeName
+		false,        // noWait
+		nil,          // args
+	)
+	if err != nil {
+		log.Fatalf("Failed to bind queue: %v", err)
+	}
+	return nil
 }
 
 // GetRabbitMQ 获取 RabbitMQ 连接
