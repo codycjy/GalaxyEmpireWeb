@@ -12,11 +12,11 @@ import (
 
 // Enum TaskType
 const (
-	TASKTYPE_ATTACK = iota
-	TASKTYPE_EXPLORE
-	TASKTYPE_LOGIN
-	MISSIONTYPE_ATTACK
-	MISSIONTYPE_EXPLORE
+	TASKTYPE_ATTACK     = 1
+	TASKTYPE_EXPLORE    = 4
+	TASKTYPE_LOGIN      = 99
+	MISSIONTYPE_ATTACK  = 1
+	MISSIONTYPE_EXPLORE = 15
 )
 
 const (
@@ -27,15 +27,6 @@ const (
 
 var log = logger.GetLogger()
 
-var TaskTypeMap = map[int]int{
-	TASKTYPE_ATTACK:  1,
-	TASKTYPE_EXPLORE: 4,
-	TASKTYPE_LOGIN:   99,
-}
-var MissionTypeMap = map[int]int{
-	MISSIONTYPE_ATTACK:  1,
-	MISSIONTYPE_EXPLORE: 15,
-}
 var TaskStatusMap = map[int]string{
 	TASK_STATUS_RUNNING: "running",
 	TASK_STATUS_WAITING: "waiting",
