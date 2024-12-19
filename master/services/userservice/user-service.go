@@ -304,30 +304,6 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 		zap.String("traceID", traceID),
 		zap.Uint("userID", userID),
 	)
-	key := fmt.Sprintf("%s%d", rolePrefix, userID)
-	roleStr, err := service.RDB.Get(ctx, key).Result()
-
-	// 如果在Redis中找到了数据，将其转换为int并返回
-	if err == nil {
-		role, err := strconv.Atoi(roleStr)
-		if err == nil {
-			log.Info("[service]GetUserRole from redis",
-				zap.String("traceID", traceID),
-				zap.Uint("userID", userID),
-				zap.Int("role", role),
-			)
-			return role
-		}
-		log.Warn("[service]GetUserRole parse to uint failed",
-			zap.String("traceID", traceID),
-			zap.Uint("userID", userID),
-			zap.Error(err),
-		)
-	}
-	log.Warn("[service]GetUserRole from redis failed",
-		zap.String("traceID", traceID),
-		zap.Uint("userID", userID),
-	)
 
 	// 如果Redis中没有数据，从数据库查询
 	user, err1 := service.getById(ctx, userID, []string{})
@@ -335,19 +311,11 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 		log.Error("[service]GetUserRole from db failed",
 			zap.String("traceID", traceID),
 			zap.Uint("userID", userID),
-			zap.Error(err),
+			zap.Error(err1),
 		)
 		return -1
 	}
 	role := user.Role
-
-	// 将结果存储回Redis
-	service.RDB.Set(ctx, key, role, expireTime)
-	log.Info("[service]GetUserRole from db",
-		zap.String("traceID", traceID),
-		zap.Uint("userID", userID),
-		zap.Int("role", role),
-	)
 
 	return role
 }
