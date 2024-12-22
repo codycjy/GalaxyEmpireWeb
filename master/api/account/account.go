@@ -302,6 +302,7 @@ func CheckAccountAvailable(c *gin.Context) {
 			Message: "Bad Request",
 			TraceID: traceID,
 		})
+		return
 	}
 	accountService, _ := accountservice.GetService(c)
 	uuid, serviceErr := accountService.RequestCheckingAccountLogin(c, &account)
