@@ -10,6 +10,9 @@ func AutoMigrate(db *gorm.DB) {
 		&User{},
 		&Account{},
 		&Fleet{},
+		&Task{},
+		&Target{},
+		&TaskLog{},
 	)
 	if err != nil {
 		log.Fatal("Error during migration: %v",

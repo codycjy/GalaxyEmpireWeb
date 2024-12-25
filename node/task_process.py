@@ -1,3 +1,4 @@
+import json
 import logging
 from queue import Queue
 from threading import Thread
@@ -11,10 +12,10 @@ class TaskProcessor:
         self.task_queue = task_queue
         self.result_queue = result_queue
 
-    def _process(self, task):
+    def _process(self, task:Task):
         task_status = 0
         try:
-            logging.info(f"Processing task: {task}")
+            logging.info(f"Processing task: {task.uuid} - {task.task_id} - Type: {task.task_type}")
             task = Task.from_dict(task)  # pyright: ignore
         except Exception as e:
             print(f"Error parsing task: {e}")

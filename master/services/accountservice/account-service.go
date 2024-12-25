@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	r "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -141,6 +142,7 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 		zap.String("traceID", traceID),
 	)
 	account.UserID = userID
+	account.ExpireAt = time.Now()
 	err := service.DB.Create(account).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {

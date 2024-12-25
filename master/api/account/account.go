@@ -350,6 +350,12 @@ func CheckAccountByUUID(c *gin.Context) {
 
 }
 func verifyAccount(c *gin.Context, account *models.Account) *utils.ApiError {
+	traceID := c.GetString("traceID")
+	log.Info("[api]Verify Account",
+		zap.String("traceID", traceID),
+		zap.String("username", account.Username),
+		zap.String("email", account.Email),
+	)
 	if account.Username == "" {
 		return utils.NewApiError(http.StatusBadRequest, "Username is required", errors.New("Username is required"))
 	}
@@ -364,6 +370,7 @@ func verifyAccount(c *gin.Context, account *models.Account) *utils.ApiError {
 	if err != nil {
 		return utils.NewApiError(http.StatusBadRequest, "Invalid Email", err)
 	}
+	log.Info("[api]Verify Account - Succeed", zap.String("traceID", traceID))
 
 	return nil
 }

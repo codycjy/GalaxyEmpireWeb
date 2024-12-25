@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -55,22 +56,50 @@ type Task struct {
 }
 
 func (t Task) ToDTO() *TaskDTO {
-	log.Fatal("Task ToDTO not implemented")
-	return &TaskDTO{}
+	return &TaskDTO{
+		Model:     t.Model,
+		Name:      t.Name,
+		NextStart: time.Unix(t.NextStart, 0),
+		Enabled:   t.Enabled,
+		AccountID: t.AccountID,
+		TaskType:  t.TaskType,
+		Targets:   t.Targets,
+		Repeat:    t.Repeat,
+		TargetNum: len(t.Targets),
+		Fleet:     t.Fleet,
+	}
 }
 
 func (t Task) GetEntityPrefix() string {
 	return "task_"
 }
-func (t *Task) ToSingleTaskRequest() (*SingleTaskRequest, error) {
-	if t.NextIndex >= len(t.Targets) {
-		log.Warn("Task::ToSingleTaskRequest: NextIndex out of range")
-		if len(t.Targets) == 0 {
-			return nil, errors.New("Task::ToSingleTaskRequest: No targets")
-		} else {
-			t.NextIndex = 0
-		}
+
+func (t *Task) ToSingleTaskRequest(account *Account) (*SingleTaskRequest, error) {
+	// 基础验证
+	if len(t.Targets) == 0 {
+		log.Error("Task::ToSingleTaskRequest: no targets",
+			zap.Uint("task_id", t.ID),
+			zap.String("task_name", t.Name))
+		return nil, errors.New("no targets available for task")
 	}
+
+	// 验证账号信息
+	if account == nil {
+		log.Error("Task::ToSingleTaskRequest: account is nil",
+			zap.Uint("task_id", t.ID))
+		return nil, errors.New("account information missing")
+	}
+
+	// 验证并更新 NextIndex
+	currentIndex := t.NextIndex
+	t.NextIndex = (t.NextIndex + 1) % len(t.Targets)
+
+	log.Debug("Task::ToSingleTaskRequest: preparing task",
+		zap.Uint("task_id", t.ID),
+		zap.String("task_name", t.Name),
+		zap.Int("current_index", currentIndex),
+		zap.Int("next_index", t.NextIndex),
+		zap.Int("targets_count", len(t.Targets)))
 
 	return &SingleTaskRequest{
 		TaskID:    t.ID,
@@ -78,15 +107,12 @@ func (t *Task) ToSingleTaskRequest() (*SingleTaskRequest, error) {
 		Name:      t.Name,
 		NextStart: t.NextStart,
 		Enabled:   t.Enabled,
-		Account:   AccountInfo{},
+		Account:   *account.ToInfo(),
 		TaskType:  t.TaskType,
-		Target:    t.Targets[t.NextIndex],
+		Target:    t.Targets[currentIndex], // 使用当前索引
 		Repeat:    t.Repeat,
-		Fleet:     Fleet{},
+		Fleet:     t.Fleet.ToDTO(),
 	}, nil
-}
-func (t *Task) UpdateNextIndex() {
-	t.NextIndex = (t.NextIndex + 1) % t.TargetNum
 }
 
 type TaskDTO struct { // TODO: finish func
@@ -113,14 +139,14 @@ type SingleTaskRequest struct {
 	TaskType  int         `json:"task_type"`
 	Target    Target      `json:"target"`
 	Repeat    int         `json:"repeat"`
-	Fleet     Fleet       `json:"fleet"`
+	Fleet     *FleetDTO   `json:"fleet"`
 }
 type SingleTaskResponse struct {
 	TaskID        uint   `json:"task_id"`
 	UUID          string `json:"uuid"`
 	Status        int    `json:"status"` // 0 success, -1 failed
 	TaskType      int    `json:"task_type"`
-	BackTimestamp int64  `json:"back_timestamp"`
+	BackTimestamp int64  `json:"back_ts"`
 	Message       string `json:"message"`
 }
 

@@ -153,7 +153,7 @@ func (rmq *RabbitMQConnection) SendNormalMessage(body string, routingKey string)
 }
 
 func (rmq *RabbitMQConnection) SendDelayedMessage(body string, routingKey string, delay time.Duration) error {
-	delayMs := int(delay / time.Millisecond)
+	delayMs := delay.Milliseconds()
 	err := rmq.Channel.Publish(
 		config.DELAYED_EXCHANGE_NAME, // exchange
 		routingKey,                   // routing key
@@ -165,6 +165,7 @@ func (rmq *RabbitMQConnection) SendDelayedMessage(body string, routingKey string
 			Headers: amqp.Table{
 				"x-delay": delayMs,
 			},
+			DeliveryMode: amqp.Persistent,
 		})
 	if err != nil {
 		return fmt.Errorf("failed to send delayed message: %v", err)

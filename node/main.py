@@ -29,6 +29,7 @@ def publish_results(queue_name: str,):
             continue
 
         result: TaskResult = result_queue.get()
+        logging.info(f"Publishing task result: {result}")
 
         # Initialize retry count for this task if not already tracked
         if result.task_id not in retry_count:

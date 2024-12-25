@@ -132,14 +132,15 @@ func (ts *taskService) UpdateTask(ctx context.Context, task *models.Task) *utils
 		return utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
 	}
 
-	tran := ts.DB.Begin()
-	if err := tran.Save(task).Error; err != nil {
+	tx := ts.DB.Begin()
+	if err := tx.Save(task).Error; err != nil {
 		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		tx.Rollback()
 		return utils.NewServiceError(http.StatusInternalServerError, "Update Task Error", err)
 	}
 	log.Info("[TaskService] UpdateTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
-	tran.Commit()
+	tx.Commit()
 	return nil
 }
 func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.ServiceError {

@@ -4,7 +4,7 @@ RABBITMQ_USER = os.environ.get('RABBITMQ_USER', 'admin')
 RABBITMQ_PASS = os.environ.get('RABBITMQ_PASS', 'password')
 TASK_QUEUE = os.environ.get('TASK_QUEUE', 'task_queue')
 RESULT_QUEUE = os.environ.get('RESULT_QUEUE', 'result_queue')
-DELAY_EXCHANGE = os.environ.get('DELAY_EXCHANGE', 'delay_exchange')
+DELAY_EXCHANGE = os.environ.get('DELAY_EXCHANGE', 'delayed_exchange')
 
 port = os.environ.get('RABBITMQ_PORT', "5672")
 try:
