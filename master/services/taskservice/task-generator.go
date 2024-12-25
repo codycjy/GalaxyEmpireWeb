@@ -61,90 +61,107 @@ func (ts *taskService) GenerateSingleTask(task *models.Task, account *models.Acc
 		zap.Time("next_start", nextStart),
 		zap.Time("now", time.Now()))
 
-	// 开启事务
-	tx := ts.DB.Begin()
-	if err := tx.Error; err != nil {
-		log.Error("[TaskService::GenerateSingleTask] failed to begin transaction", zap.Error(err))
-		return nil
-	}
-
-	// 使用事务锁定任务记录
-	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&models.Task{}, task.ID).Error; err != nil {
-		tx.Rollback()
-		log.Error("[TaskService::GenerateSingleTask] failed to lock task", zap.Error(err))
-		return nil
-	}
-
-	// 生成单次任务请求
+	// Generate single task request without DB operations
 	singleTask, err := task.ToSingleTaskRequest(account)
 	if err != nil {
-		tx.Rollback()
 		log.Error("[TaskService::GenerateSingleTask] failed to convert task to single task", zap.Error(err))
 		return nil
 	}
 
-	// 更新任务的 NextIndex
-	if err := tx.Model(task).Update("next_index", task.NextIndex).Error; err != nil {
-		tx.Rollback()
-		log.Error("[TaskService::GenerateSingleTask] failed to update next_index",
-			zap.Error(err),
-			zap.Uint("task_id", task.ID))
-		return nil
-	}
-
-	// 创建任务日志
-	taskLog := models.TaskLog{
-		TaskID: task.ID,
-		UUID:   singleTask.UUID,
-		Status: models.TASK_RESULT_RUNNING,
-	}
-	if err := tx.Create(&taskLog).Error; err != nil {
-		tx.Rollback()
-		log.Error("[TaskService::GenerateSingleTask] failed to create task log",
-			zap.Error(err),
-			zap.String("uuid", singleTask.UUID))
-		return nil
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		log.Error("[TaskService::GenerateSingleTask] failed to commit transaction",
-			zap.Error(err),
-			zap.String("uuid", singleTask.UUID))
-		return nil
-	}
-
-	log.Info("[TaskService::GenerateSingleTask] generate single task",
-		zap.String("uuid", singleTask.UUID),
-		zap.String("task", task.Name))
-
 	return singleTask
 }
-func (ts *taskService) GenerateTaskForAccount(account *models.Account) error {
-	for _, task := range account.Tasks {
-		if singleTask := ts.GenerateSingleTask(&task, account); singleTask != nil {
 
-			// 转换为JSON
+func (ts *taskService) GenerateTaskForAccount(account *models.Account) error {
+	fourHoursAgo := time.Now().Add(-4 * time.Hour)
+
+	for _, task := range account.Tasks {
+		// Reset long-running tasks to ready status
+		if task.Status == models.TaskStatusMap[models.TASK_STATUS_RUNNING] &&
+			time.Unix(task.NextStart, 0).Before(fourHoursAgo) {
+			log.Warn("[TaskService::GenerateTaskForAccount] task stuck in running state, resetting to ready",
+				zap.Uint("task_id", task.ID),
+				zap.String("task_name", task.Name),
+				zap.Time("next_start", time.Unix(task.NextStart, 0)))
+
+			if err := ts.DB.Model(&task).Update("status", models.TaskStatusMap[models.TASK_STATUS_READY]).Error; err != nil {
+				log.Error("[TaskService::GenerateTaskForAccount] failed to reset task status",
+					zap.Error(err))
+				continue
+			}
+			task.Status = models.TaskStatusMap[models.TASK_STATUS_READY]
+		}
+
+		// Check and reset NextIndex if it's invalid
+		if task.NextIndex >= len(task.Targets) {
+			log.Warn("[TaskService::GenerateTaskForAccount] invalid next_index, resetting to 0",
+				zap.Uint("task_id", task.ID),
+				zap.Int("next_index", task.NextIndex),
+				zap.Int("targets_length", len(task.Targets)))
+			task.NextIndex = 0
+			if err := ts.DB.Model(&task).Update("next_index", 0).Error; err != nil {
+				log.Error("[TaskService::GenerateTaskForAccount] failed to reset next_index",
+					zap.Error(err))
+				continue
+			}
+		}
+
+		if singleTask := ts.GenerateSingleTask(&task, account); singleTask != nil {
+			// Start transaction
+			tx := ts.DB.Begin()
+			if err := tx.Error; err != nil {
+				return fmt.Errorf("failed to begin transaction: %v", err)
+			}
+
+			// Lock task record
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&models.Task{}, task.ID).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to lock task: %v", err)
+			}
+
+			// Create task log
+			taskLog := models.TaskLog{
+				TaskID: task.ID,
+				UUID:   singleTask.UUID,
+				Status: models.TASK_RESULT_RUNNING,
+			}
+			if err := tx.Create(&taskLog).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to create task log: %v", err)
+			}
+
+			// Update task's NextIndex
+			if err := tx.Model(&task).Update("next_index", task.NextIndex).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update next_index: %v", err)
+			}
+
+			// Commit transaction
+			if err := tx.Commit().Error; err != nil {
+				return fmt.Errorf("failed to commit transaction: %v", err)
+			}
+
+			// Convert to JSON and send message
 			nextStart := time.Unix(singleTask.NextStart, 0)
 			taskJson, err := json.Marshal(singleTask)
 			if err != nil {
 				return fmt.Errorf("failed to marshal task: %v", err)
 			}
-			delay := nextStart.Sub(time.Now())
+
+			delay := time.Until(nextStart)
 			if delay < 0 {
-				// 如果计算出的延迟为负，使用最小延迟时间
 				delay = time.Duration(config.TASK_DELAY) * time.Second
 			}
-			log.Debug("[TaskService::GenerateTaskForAccount] delay", zap.Int64("delay", delay.Milliseconds()), zap.String("task", string(taskJson)))
+			log.Debug("[TaskService::GenerateTaskForAccount] delay",
+				zap.Int64("delay", delay.Milliseconds()),
+				zap.String("task", string(taskJson)))
 
-			// 发送延迟消息
+			// Send delayed message
 			routingKey := config.TASK_QUEUE_NAME
-			err = ts.MQ.SendDelayedMessage(string(taskJson), routingKey, delay)
-			if err != nil {
+			if err := ts.MQ.SendDelayedMessage(string(taskJson), routingKey, delay); err != nil {
 				return fmt.Errorf("failed to send delayed message: %v", err)
 			}
 
-			// 消息发送成功后保存任务状态 并更新下一个任务索引
+			// Update task status
 			task.Status = models.TaskStatusMap[models.TASK_STATUS_RUNNING]
 			if err := ts.DB.Save(&task).Error; err != nil {
 				return fmt.Errorf("failed to save task: %v", err)

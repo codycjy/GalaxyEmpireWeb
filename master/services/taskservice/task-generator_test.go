@@ -22,7 +22,7 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 	}
 	NormalTask := models.Task{
 		Name:      "test",
-		NextStart: time.Now(),
+		NextStart: time.Now().Unix(),
 		Enabled:   true,
 		AccountID: 1,
 		TaskType:  1,
@@ -45,7 +45,7 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 	}
 	DisableTask := models.Task{
 		Name:      "test",
-		NextStart: time.Now(),
+		NextStart: time.Now().Unix(),
 		Enabled:   false,
 		AccountID: 1,
 		TaskType:  1,
@@ -64,7 +64,7 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 	DisableTask2 := models.Task{
 
 		Name:      "test",
-		NextStart: time.Now().Add(2 * time.Hour),
+		NextStart: time.Now().Add(2 * time.Hour).Unix(),
 		Enabled:   true,
 		AccountID: 1,
 		TaskType:  1,
@@ -81,7 +81,7 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 	}
 	DisableTask3 := models.Task{
 		Name:      "test",
-		NextStart: time.Now(),
+		NextStart: time.Now().Unix(),
 		Enabled:   true,
 		AccountID: 1,
 		TaskType:  1,
@@ -100,7 +100,7 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 
 	ErrorIndexTask := models.Task{
 		Name:      "test",
-		NextStart: time.Now(),
+		NextStart: time.Now().Unix(),
 		Enabled:   true,
 		AccountID: 1,
 		TaskType:  1,
@@ -116,11 +116,17 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 		TargetNum: 1,
 	}
 
+	testAccount := &models.Account{
+		Model: gorm.Model{ID: 1},
+		// Add minimal account details needed for testing
+	}
+
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *models.SingleTaskRequest
+		name    string
+		fields  fields
+		args    args
+		account *models.Account
+		want    *models.SingleTaskRequest
 	}{
 		{
 			name: "Normal Task",
@@ -132,16 +138,17 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 			args: args{
 				task: &NormalTask,
 			},
+			account: testAccount,
 			want: &models.SingleTaskRequest{
 				TaskID:    NormalTask.ID,
 				Name:      NormalTask.Name,
 				NextStart: NormalTask.NextStart,
 				Enabled:   NormalTask.Enabled,
-				Account:   models.AccountInfo{},
+				Account:   *testAccount.ToInfo(),
 				TaskType:  NormalTask.TaskType,
 				Target:    NormalTask.Targets[NormalTask.NextIndex],
 				Repeat:    NormalTask.Repeat,
-				Fleet:     models.Fleet{},
+				Fleet:     models.Fleet{}.ToDTO(),
 			},
 		},
 		{
@@ -154,7 +161,8 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 			args: args{
 				task: &DisableTask,
 			},
-			want: nil,
+			account: testAccount,
+			want:    nil,
 		},
 		{
 			name: "Disable Task, NextStart > time.Now().Add(time.Hour)",
@@ -166,7 +174,8 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 			args: args{
 				task: &DisableTask2,
 			},
-			want: nil,
+			account: testAccount,
+			want:    nil,
 		},
 		{
 			name: "Disable Task, Status = Running",
@@ -178,7 +187,8 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 			args: args{
 				task: &DisableTask3,
 			},
-			want: nil,
+			account: testAccount,
+			want:    nil,
 		},
 		{
 			name: "Error Task, NextIndex out of range",
@@ -190,7 +200,8 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 			args: args{
 				task: &ErrorIndexTask,
 			},
-			want: nil,
+			account: testAccount,
+			want:    nil,
 		},
 	}
 	for _, tt := range tests {
@@ -200,8 +211,32 @@ func Test_taskService_GenerateSingleTask(t *testing.T) {
 				MQ:       tt.fields.MQ,
 				Enforcer: tt.fields.Enforcer,
 			}
-			if got := ts.GenerateSingleTask(tt.args.task); !reflect.DeepEqual(got, tt.want) {
+			got := ts.GenerateSingleTask(tt.args.task, tt.account)
+
+			// Handle nil case
+			if got == nil && tt.want == nil {
+				return
+			}
+			if (got == nil) != (tt.want == nil) {
 				t.Errorf("taskService.GenerateSingleTask() = %v, want %v", got, tt.want)
+				return
+			}
+
+			// For non-nil results, compare fields except UUID
+			if got != nil {
+				// Temporarily store the generated UUID
+				gotUUID := got.UUID
+				// Set UUID to empty for comparison
+				got.UUID = ""
+				if tt.want != nil {
+					tt.want.UUID = ""
+				}
+
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("taskService.GenerateSingleTask() = %v, want %v", got, tt.want)
+				}
+				// Restore the UUID if needed
+				got.UUID = gotUUID
 			}
 		})
 	}

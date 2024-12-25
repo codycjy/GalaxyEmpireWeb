@@ -50,30 +50,36 @@ func (ts *taskService) AddTask(ctx context.Context, task *models.Task) *utils.Se
 	userID := utils.UserIDFromContext(ctx)
 	log.Info("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
-	tran := ts.DB.Begin()
-	if err := tran.Create(task).Error; err != nil {
+	tx := ts.DB.Begin()
+	if err := tx.Create(task).Error; err != nil {
 		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return utils.NewServiceError(http.StatusInternalServerError, "Create Task Error", err)
 	}
 	sub := strconv.Itoa(int(task.AccountID))
 	obj := task.GetEntityPrefix() + strconv.Itoa(int(task.ID))
 	act := "write"
-	_, err1 := ts.Enforcer.AddPolicy(ctx, sub, obj, act)
+	_, err1 := ts.Enforcer.AddPolicy(ctx, tx, sub, obj, act)
 	if err1 != nil {
 		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err1))
-		tran.Rollback()
+		tx.Rollback()
 		return utils.NewServiceError(http.StatusInternalServerError, "Casbin AddPolicy Error", err1)
 	}
 	act = "read"
-	_, err2 := ts.Enforcer.AddPolicy(ctx, sub, obj, act)
+	_, err2 := ts.Enforcer.AddPolicy(ctx, tx, sub, obj, act)
 	if err2 != nil {
 		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err2))
-		tran.Rollback()
+		tx.Rollback()
 		return utils.NewServiceError(http.StatusInternalServerError, "Casbin AddPolicy Error", err2)
 	}
 	log.Info("[TaskService] AddTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
-	tran.Commit()
+	if err := tx.Commit().Error; err != nil {
+		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, "Commit Transaction Error", err)
+	}
+
+	go ts.Enforcer.ReloadPolicy()
+
 	return nil
 }
 

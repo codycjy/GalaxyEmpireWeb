@@ -13,14 +13,12 @@ import (
 	"os"
 	"strconv"
 
-	r "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type userService struct { // change to private for factory
 	DB       *gorm.DB
-	RDB      *r.Client
 	Enforcer casbinservice.Enforcer
 }
 
@@ -32,16 +30,15 @@ var expireTime = consts.ProdExpire
 const READ = 1 // TODO: change it later
 const WRITE = 2
 
-func NewService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) *userService {
+func NewService(db *gorm.DB, enforcer casbinservice.Enforcer) *userService {
 	return &userService{
 		DB:       db,
-		RDB:      rdb,
 		Enforcer: enforcer,
 	}
 }
 
-func InitService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) error {
-	if db == nil || rdb == nil || enforcer == nil {
+func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
+	if db == nil || enforcer == nil {
 		log.Fatal("db, rdb, enforcer is nil")
 	}
 	if userServiceInstance != nil {
@@ -50,7 +47,7 @@ func InitService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) er
 	if os.Getenv("ENV") == "test" {
 		expireTime = consts.TestExipre
 	}
-	userServiceInstance = NewService(db, rdb, enforcer)
+	userServiceInstance = NewService(db, enforcer)
 	return nil
 }
 
@@ -72,8 +69,20 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 		zap.String("username", user.Username),
 	)
 
-	err := service.DB.Create(user).Error
-	if err != nil {
+	// Start transaction
+	tx := service.DB.Begin()
+	if tx.Error != nil {
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to start transaction", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Create user
+	if err := tx.Create(user).Error; err != nil {
+		tx.Rollback()
 		log.Error("[service]Create user failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
@@ -81,27 +90,36 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 		return utils.NewServiceError(http.StatusInternalServerError, "failed create user", err)
 	}
 
-	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), user.ID)
 	userID := strconv.Itoa(int(user.ID))
+	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), user.ID)
 
-	// 使用注入的Enforcer，统一处理错误
-	if _, err := service.Enforcer.AddPolicy(ctx, userID, obj, "read"); err != nil {
-		log.Error("[service]Add read policy failed",
-			zap.String("traceID", traceID),
-			zap.Error(err),
-		)
-		return utils.NewServiceError(http.StatusInternalServerError, "failed to add read policy", err)
+	// Add policies in batch
+	policies := [][]string{
+		{userID, obj, "read"},
+		{userID, obj, "write"},
+		{userID, "user", "read"}, // Add basic user role permissions
+		{userID, fmt.Sprintf("%s*", user.GetEntityPrefix()), "read"}, // Allow user to read their own resources
 	}
 
-	if _, err := service.Enforcer.AddPolicy(ctx, userID, obj, "write"); err != nil {
-		log.Error("[service]Add write policy failed",
+	// Log the exact policies being added
+	log.Info("[service]Adding policies",
+		zap.String("traceID", traceID),
+		zap.Any("policies", policies),
+	)
+
+	if _, err := service.Enforcer.AddPolicies(ctx, tx, policies); err != nil {
+		tx.Rollback()
+		log.Error("[service]Add policies failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
+			zap.Any("policies", policies),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError, "failed to add write policy", err)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to add policies", err)
 	}
 
-	if _, err := service.Enforcer.AddUserToGroup(ctx, userID, "user"); err != nil {
+	// Add user to group
+	if _, err := service.Enforcer.AddUserToGroup(ctx, tx, userID, "user"); err != nil {
+		tx.Rollback()
 		log.Error("[service]Add user to group failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
@@ -109,8 +127,27 @@ func (service *userService) Create(ctx context.Context, user *models.User) *util
 		return utils.NewServiceError(http.StatusInternalServerError, "failed to add user to group", err)
 	}
 
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		log.Error("[service]Failed to commit transaction",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "failed to commit transaction", err)
+	}
+
+	log.Info("[service]Successfully created user with policies",
+		zap.String("traceID", traceID),
+		zap.String("username", user.Username),
+		zap.Uint("userID", user.ID),
+		zap.Any("policies", policies),
+	)
+	go service.Enforcer.ReloadPolicy()
+
 	return nil
 }
+
 func (service *userService) Update(ctx context.Context, user *models.User) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]Update user",
@@ -195,7 +232,7 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 	for _, field := range fields {
 		cur.Preload(field)
 	}
-	obj := fmt.Sprintf("%s%d", user.GetEntityPrefix(), id)
+	obj := fmt.Sprintf("%s%d", models.User{}.GetEntityPrefix(), id)
 	allowed, err := service.IsUserAllowed(ctx, obj, READ)
 	if err != nil {
 		log.Error("[service]Get By ID - failed to validate user permission",
@@ -203,7 +240,6 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 			zap.Uint("userID", id),
 			zap.Error(err),
 		)
-
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed to Validate User Permission", err)
 	}
 	if !allowed {
@@ -322,14 +358,27 @@ func (service *userService) GetUserRole(ctx context.Context, userID uint) int {
 
 // Prepared for more complicated cases
 // Seem Useless currently lol
-func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw int) (allowed bool, err error) { // TODO: Check it
+func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw int) (allowed bool, err error) {
 	traceID := utils.TraceIDFromContext(ctx)
 	role := ctx.Value("role")
 	if role == nil {
+		log.Error("[service]Check User Permission - No role in context",
+			zap.String("traceID", traceID),
+		)
 		return false, errors.New("role not found in context")
 	}
+
+	userID := ctx.Value("userID")
+	if userID == nil {
+		log.Error("[service]Check User Permission - No userID in context",
+			zap.String("traceID", traceID),
+		)
+		return false, errors.New("userID not found in context")
+	}
+
 	roleInt := role.(int)
-	ctxUserID := ctx.Value("userID").(uint)
+	ctxUserID := userID.(uint)
+
 	log.Info(
 		"[service]Check user Permission",
 		zap.String("traceID", traceID),
@@ -337,14 +386,24 @@ func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw in
 		zap.String("obj", obj),
 		zap.Uint("requestUserID", ctxUserID),
 	)
+
+	userIDStr := strconv.Itoa(int(ctxUserID))
 	opt := "read"
 	if rw&2 == 2 {
 		opt = "write"
 	}
-	fmt.Println("obj", obj)
-	allowed, err = service.Enforcer.Enforce(ctx, strconv.Itoa(int(ctxUserID)), obj, opt)
+
+	// Add debug logging to show exact values being checked
+	log.Info("[service]Checking permission",
+		zap.String("traceID", traceID),
+		zap.String("userID", userIDStr),
+		zap.String("obj", obj),
+		zap.String("act", opt),
+	)
+
+	allowed, err = service.Enforcer.Enforce(ctx, userIDStr, obj, opt)
 	if err != nil {
-		log.Error("[service]IsUserAllowedfailed to validate user permission",
+		log.Error("[service]IsUserAllowed failed to validate user permission",
 			zap.String("traceID", traceID),
 			zap.Int("role", roleInt),
 			zap.Uint("requestUserID", ctxUserID),
@@ -352,6 +411,15 @@ func (service *userService) IsUserAllowed(ctx context.Context, obj string, rw in
 		)
 		return false, utils.NewServiceError(http.StatusInternalServerError, "Failed to Validate User Permission", err)
 	}
+
+	log.Info("[service]Permission check result",
+		zap.String("traceID", traceID),
+		zap.String("userID", userIDStr),
+		zap.String("obj", obj),
+		zap.String("act", opt),
+		zap.Bool("allowed", allowed),
+	)
+
 	return allowed, nil
 }
 

@@ -15,14 +15,12 @@ import (
 	"strconv"
 	"time"
 
-	r "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type accountService struct {
 	DB       *gorm.DB
-	RDB      *r.Client
 	Enforcer casbinservice.Enforcer
 }
 
@@ -31,21 +29,25 @@ var log = logger.GetLogger()
 var accountListPrefix = consts.UserAccountPrefix
 var expireTime = consts.ProdExpire
 
-func NewService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) *accountService {
+const (
+	READ  = 1
+	WRITE = 2
+)
+
+func NewService(db *gorm.DB, enforcer casbinservice.Enforcer) *accountService {
 	return &accountService{
 		DB:       db,
-		RDB:      rdb,
 		Enforcer: enforcer,
 	}
 }
-func InitService(db *gorm.DB, rdb *r.Client, enforcer casbinservice.Enforcer) error {
+func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
 	if accountServiceInstance != nil {
 		return errors.New("AccountService is already initialized")
 	}
 	if os.Getenv("ENV") == "test" {
 		expireTime = consts.TestExipre
 	}
-	accountServiceInstance = NewService(db, rdb, enforcer)
+	accountServiceInstance = NewService(db, enforcer)
 	log.Info("[service] Account service Initialized")
 	return nil
 }
@@ -141,10 +143,30 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 		zap.String("username", account.Username),
 		zap.String("traceID", traceID),
 	)
+
+	// Start transaction
+	tx := service.DB.Begin()
+	if tx.Error != nil {
+		log.Error("[service]Failed to start database transaction",
+			zap.String("traceID", traceID),
+			zap.Error(tx.Error),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to start database transaction", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Error("[service]Panic recovered in Create Account",
+				zap.String("traceID", traceID),
+				zap.Any("panic", r),
+			)
+		}
+	}()
+
 	account.UserID = userID
 	account.ExpireAt = time.Now()
-	err := service.DB.Create(account).Error
-	if err != nil {
+	if err := tx.Create(account).Error; err != nil {
+		tx.Rollback()
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			log.Info("[service]Create Account failed - Account already exists",
 				zap.String("traceID", traceID),
@@ -158,22 +180,36 @@ func (service *accountService) Create(ctx context.Context, account *models.Accou
 		)
 		return utils.NewServiceError(http.StatusInternalServerError, "failed create account", err)
 	}
-	_, err = service.Enforcer.AddPolicy(ctx, strconv.Itoa(int(userID)), account.GetEntityPrefix()+fmt.Sprint(account.ID), "write")
-	if err != nil {
-		log.Error("[service]Create Account failed - Add Policy",
+
+	// Add policies in batch using the same transaction
+	policies := [][]string{
+		{strconv.Itoa(int(userID)), account.GetEntityPrefix() + fmt.Sprint(account.ID), "write"},
+		{strconv.Itoa(int(userID)), account.GetEntityPrefix() + fmt.Sprint(account.ID), "read"},
+	}
+
+	if _, err := service.Enforcer.AddPolicies(ctx, tx, policies); err != nil {
+		tx.Rollback()
+		log.Error("[service]Create Account failed - Add Policies",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+			zap.Any("policies", policies),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to add policies", err)
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		log.Error("[service]Failed to commit transaction",
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		return utils.NewServiceError(http.StatusInternalServerError, "Failed to add policy", err)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to commit transaction", err)
 	}
-	_, err = service.Enforcer.AddPolicy(ctx, strconv.Itoa(int(userID)), account.GetEntityPrefix()+fmt.Sprint(account.ID), "read")
-	if err != nil {
-		log.Error("[service]Create Account failed - Add Policy",
-			zap.String("traceID", traceID),
-			zap.Error(err),
-		)
-		return utils.NewServiceError(http.StatusInternalServerError, "Failed to add policy", err)
-	}
+
+	// Reload policies after successful creation
+	go service.Enforcer.ReloadPolicy()
+
 	return nil
 }
 
@@ -200,24 +236,55 @@ func (service *accountService) Update(ctx context.Context, account *models.Accou
 		)
 	}
 
-	err := service.DB.Save(account).Error
-	if err != nil {
+	// Start transaction
+	tx := service.DB.Begin()
+	if tx.Error != nil {
+		log.Error("[service]Failed to start database transaction",
+			zap.String("traceID", traceID),
+			zap.Error(tx.Error),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to start database transaction", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Error("[service]Panic recovered in Update Account",
+				zap.String("traceID", traceID),
+				zap.Any("panic", r),
+			)
+		}
+	}()
+
+	// Perform update within transaction
+	if err := tx.Save(account).Error; err != nil {
+		tx.Rollback()
 		log.Error("[service]Update Account failed",
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
 		}
 		return utils.NewServiceError(http.StatusInternalServerError, "Failed to Update Account", err)
 	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		log.Error("[service]Failed to commit transaction",
+			zap.String("traceID", traceID),
+			zap.Error(err),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "Failed to commit transaction", err)
+	}
+
 	return nil
 }
 
 func (service *accountService) Delete(ctx context.Context, ID uint) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]Delete Account Info",
-		zap.Uint("userId", ID),
+		zap.Uint("accountID", ID),
 		zap.String("traceID", traceID),
 	)
 
@@ -297,7 +364,7 @@ func (service *accountService) isUserAllowed(ctx context.Context, accountID uint
 
 	obj := fmt.Sprintf("%s%d", models.Account{}.GetEntityPrefix(), accountID)
 	opt := "read"
-	if rw&2 == 2 {
+	if rw&WRITE == WRITE {
 		opt = "write"
 	}
 
@@ -305,12 +372,6 @@ func (service *accountService) isUserAllowed(ctx context.Context, accountID uint
 	if err != nil {
 		return false, utils.NewServiceError(http.StatusInternalServerError, "Failed to check permission", err)
 	}
-	log.Info("[AccountService]Check User Permission",
-		zap.String("traceID", utils.TraceIDFromContext(ctx)),
-		zap.String("userID", fmt.Sprint(userID)),
-		zap.Uint("accountID", accountID),
-		zap.Bool("allowed", allowed),
-	)
 
 	return allowed, nil
 }

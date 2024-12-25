@@ -83,6 +83,15 @@ func (t *Task) ToSingleTaskRequest(account *Account) (*SingleTaskRequest, error)
 		return nil, errors.New("no targets available for task")
 	}
 
+	// Validate NextIndex
+	if t.NextIndex >= len(t.Targets) {
+		log.Error("Task::ToSingleTaskRequest: invalid next_index",
+			zap.Uint("task_id", t.ID),
+			zap.Int("next_index", t.NextIndex),
+			zap.Int("targets_length", len(t.Targets)))
+		return nil, errors.New("invalid next_index")
+	}
+
 	// 验证账号信息
 	if account == nil {
 		log.Error("Task::ToSingleTaskRequest: account is nil",

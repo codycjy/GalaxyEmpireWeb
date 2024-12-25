@@ -56,7 +56,7 @@ func Test_taskService_HandleSingleResult(t *testing.T) {
 				Enforcer: nil,
 			},
 			args:    args{response: NormalResponse},
-			want:    &models.Task{Model: gorm.Model{ID: 1}, Status: models.TaskStatusMap[models.TASK_STATUS_READY], NextStart: time.Unix(1, 0).Add(config.TASK_DELAY)},
+			want:    &models.Task{Model: gorm.Model{ID: 1}, Status: models.TaskStatusMap[models.TASK_STATUS_READY], NextStart: time.Unix(1, 0).Add(time.Duration(config.TASK_DELAY) * time.Second).Unix()},
 			wantErr: false,
 		},
 		{
