@@ -1,141 +1,187 @@
+import logging
 import time
 from queue import Queue
-from network import Network
+from network import Network, NetworkResponse
 from model.user import Account
-from rabbitmq import RabbitMQ
 from model.task import Task, TaskType, MissionType
 from model.fleet import Fleet
 from model.target import Target
-# from config import fleet_config, ShipToID
+
+logger = logging.getLogger(__name__)
 
 
 class Galaxy(Network):
     def __init__(self, user: Account, result_queue: Queue):
         super().__init__(user)
         self.user = user
-        self.rabbitmq = RabbitMQ()
         self.result_queue = result_queue
+        logger.info("Galaxy instance created.")
 
-    def prepare_fleet(self, task: Task):
+    def prepare_fleet(self, task: Task) -> NetworkResponse:
         """
-        Prepare fleet for the task
+        Prepare fleet for the task.
 
         Args:
-            task (Task): Task object
+            task (Task): Task object.
 
         Returns:
-            dict: Dictionary containing the arguments and token
-
+            NetworkResponse: Contains arguments and token if successful.
         """
         PREPARE_FLEET_END_POINT = "game.php?page=my_fleet1"
         args = {}
-        if task.task_type == TaskType.ATTACK:
-            args['mission'] = MissionType.ATTACK.value
-            args['type'] = TaskType.ATTACK.value
-            args['galaxy'] = task.target.galaxy
-            args['system'] = task.target.system
-            args['planet'] = task.target.planet
-            args['speed'] = 10
-            fleet = task.fleet.to_fleet()
-            args.update(fleet)
-            response = self._post(PREPARE_FLEET_END_POINT, args)
-        elif task.task_type == TaskType.EXPLORE:
-            args['mission'] = MissionType.EXPLORE.value
-            args['type'] = TaskType.EXPLORE.value
-            args['galaxy'] = task.target.galaxy
-            args['system'] = task.target.system
-            args['planet'] = task.target.planet
-            args['speed'] = 10
-            fleet = task.fleet.to_fleet()
-            args.update(fleet)
-            response = self._post(PREPARE_FLEET_END_POINT, args)
-        if response['status'] == 0:
-            token = response['data']['result']['token']
-            print(token)
-            print("Fleet prepared")
-            return {'args': args, 'token': token}
+        mission_mapping = {
+            TaskType.ATTACK: MissionType.ATTACK,
+            TaskType.EXPLORE: MissionType.EXPLORE
+        }
 
-    def handle_attack_task(self, task):
-        total_finish_ts = -1
-        for _ in range(task.repeat):
-            finish_ts = self.handle_single_attack_task(task)
-            if finish_ts == -1:
-                print("Error sending fleet")
-                # TODO: stats update
-            total_finish_ts = max(total_finish_ts, finish_ts)
-            time.sleep(1)
-        return total_finish_ts
+        mission = mission_mapping.get(task.task_type)
+        if not mission:
+            err_msg = f"Unsupported task type: {task.task_type}"
+            logger.error(err_msg)
+            return NetworkResponse(status=-1, data={}, err_msg=err_msg)
 
-    def handle_single_attack_task(self, task: Task) -> int:
+        args.update({
+            'mission': mission.value,
+            'type': task.task_type.value,
+            'galaxy': task.target.galaxy,
+            'system': task.target.system,
+            'planet': task.target.planet,
+            'speed': 10
+        })
+
+        fleet_data = task.fleet.to_fleet()
+        args.update(fleet_data)
+
+        logger.info(f"Preparing fleet for task: {task}")
+        response = self._post(PREPARE_FLEET_END_POINT, args)
+
+        if response.status == 0:
+            token = response.data.get('result', {}).get('token')
+            if token:
+                logger.info("Fleet prepared successfully.")
+                return NetworkResponse(status=0, data={'args': args, 'token': token})
+            else:
+                err_msg = "Token not found in response."
+                logger.error(err_msg)
+                return NetworkResponse(status=-1, data={}, err_msg=err_msg)
+        else:
+            logger.error(f"Failed to prepare fleet: {response.err_msg}")
+            return response
+
+    def handle_attack_task(self, task: Task) -> NetworkResponse:
         """
-        Handle single attack Task
+        Handle an attack task.
 
         Args:
-            task (Task): Task object
+            task (Task): Task object.
 
         Returns:
-            int: backtime of the fleet, if successful, -1 otherwise
+            NetworkResponse: Contains the latest backtime if successful.
+        """
+        if not self.ready:
+            err_msg = "Network not ready."
+            logger.error(err_msg)
+            return NetworkResponse(status=-1, data={}, err_msg=err_msg)
 
+        total_finish_ts = -1
+        for attempt in range(task.repeat):
+            logger.info(f"Handling attack task attempt {attempt + 1}/{task.repeat}")
+            response = self.handle_single_attack_task(task)
+            if response.status != 0:
+                logger.error("Error sending fleet.")
+                # TODO: Update stats if necessary
+            else:
+                backtime = response.data.get('back_ts', -1)
+                if backtime > total_finish_ts:
+                    total_finish_ts = backtime
+            time.sleep(1)
+        return NetworkResponse(status=0, data={'total_finish_ts': total_finish_ts})
 
+    def handle_single_attack_task(self, task: Task) -> NetworkResponse:
+        """
+        Handle a single attack task.
 
-            """
-        result = self.prepare_fleet(task)
-        if not result:
-            print("Error preparing fleet")
-            return -1
+        Args:
+            task (Task): Task object.
 
-        args = result['args']
-        token = result['token']
+        Returns:
+            NetworkResponse: Contains backtime if successful, error otherwise.
+        """
+        response = self.prepare_fleet(task)
+        if response.status != 0:
+            logger.error("Error preparing fleet.")
+            return response
+
+        args = response.data['args']
+        token = response.data['token']
         SEND_FLEET_END_POINT = "game.php?page=fleet3"
         args['token'] = token
-        response = self._post(SEND_FLEET_END_POINT, args)
-        if response['status'] != 0:
-            print("Error sending fleet")
-            print(response)
-            return -1
-        print("Fleet sent")
-        print(response)
-        backtime: int = response['data']['result']['back_ts']
-        return backtime
 
-    def handle_explore_task(self, task) -> int:
+        logger.info("Sending fleet.")
+        send_response = self._post(SEND_FLEET_END_POINT, args)
+
+        if send_response.status != 0:
+            logger.error(f"Error sending fleet: {send_response.err_msg}")
+            return send_response
+
+        logger.info("Fleet sent successfully.")
+        backtime = send_response.data.get('result', {}).get('back_ts', -1)
+        return NetworkResponse(status=0, data={'back_ts': backtime})
+
+    def handle_explore_task(self, task: Task) -> NetworkResponse:
         """
-        Handle explore Task
+        Handle an explore task.
 
         Args:
-            task (Task): Task object
+            task (Task): Task object.
 
         Returns:
-            int: backtime of the fleet, if successful, -1 otherwise
+            NetworkResponse: Contains the latest backtime if successful.
         """
-        total_finish_ts = -1
-        for _ in range(task.repeat):
-            result = self.prepare_fleet(task)
-            if not result:
-                print("Error preparing fleet")
-                return -1
+        if not self.ready:
+            err_msg = "Network not ready."
+            logger.error(err_msg)
+            return NetworkResponse(status=-1, data={}, err_msg=err_msg)
 
-            args = result['args']
-            token = result['token']
+        total_finish_ts = -1
+        for attempt in range(task.repeat):
+            logger.info(f"Handling explore task attempt {attempt + 1}/{task.repeat}")
+            response = self.prepare_fleet(task)
+            if response.status != 0:
+                logger.error("Error preparing fleet.")
+                return response
+
+            args = response.data['args']
+            token = response.data['token']
             END_POINT = "game.php?page=fleet3"
             args['token'] = token
             args['staytime'] = 1
-            response = self._post(END_POINT, args)
-            if response['status'] != 0:
-                print("Error sending fleet")
-                print(response)
+
+            logger.info("Sending exploration fleet.")
+            send_response = self._post(END_POINT, args)
+
+            if send_response.status != 0:
+                logger.error(f"Error sending exploration fleet: {send_response.err_msg}")
                 continue
-            print("Fleet sent")
-            print(response)
-            backtime: int = response['data']['result']['back_ts']
-            total_finish_ts = max(total_finish_ts, backtime)
+
+            backtime = send_response.data.get('result', {}).get('back_ts', -1)
+            if backtime > total_finish_ts:
+                total_finish_ts = backtime
+
+            logger.info("Exploration fleet sent successfully.")
             time.sleep(1)
-        return total_finish_ts
+        return NetworkResponse(status=0, data={'total_finish_ts': total_finish_ts})
 
-    def handle_escape_task(self, task):  # TODO:
-        # 处理逃跑任务
-        pass
+    def handle_escape_task(self, task: Task) -> NetworkResponse:
+        """
+        Handle an escape task.
 
+        Args:
+            task (Task): Task object.
 
-if __name__ == '__main__':
-    pass
+        Returns:
+            NetworkResponse: Contains the result of the escape task.
+        """
+        logger.info("Handling escape task...")
+        # TODO: Implement escape task handling
+        return NetworkResponse(status=0, data={'message': 'Escape task not implemented yet.'})

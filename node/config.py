@@ -5,6 +5,11 @@ RABBITMQ_PASS = os.environ.get('RABBITMQ_PASS', 'password')
 TASK_QUEUE = os.environ.get('TASK_QUEUE', 'task_queue')
 RESULT_QUEUE = os.environ.get('RESULT_QUEUE', 'result_queue')
 DELAY_EXCHANGE = os.environ.get('DELAY_EXCHANGE', 'delayed_exchange')
+PROXY_BASE_URL = os.environ.get('PROXY_ENDPOINT', 'http://localhost:5010')
+PROXY_AUTH_USER = os.environ.get('PROXY_AUTH_USER', 'user')
+PROXY_AUTH_PASS = os.environ.get('PROXY_AUTH_PASS', 'password')
+if os.getenv('PROXY', False):
+    print("************ PROXY ENABLED ************")
 
 port = os.environ.get('RABBITMQ_PORT', "5672")
 try:

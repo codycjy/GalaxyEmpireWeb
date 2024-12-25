@@ -37,9 +37,7 @@ func (ts *taskService) GenerateSingleTask(task *models.Task, account *models.Acc
 	nextStart := time.Unix(task.NextStart, 0)
 	if !task.Enabled ||
 		task.Status != models.TaskStatusMap[models.TASK_STATUS_READY] ||
-		time.Until(nextStart) > config.QUEUE_THRESHOLD || // 如果距离执行时间超过1小时
-		time.Until(nextStart) < 0 { // 如果已经过了执行时间
-
+		time.Until(nextStart) > config.QUEUE_THRESHOLD { // 如果距离执行时间超过1小时
 		reason := "unknown"
 		if !task.Enabled {
 			reason = "task disabled"
@@ -47,10 +45,7 @@ func (ts *taskService) GenerateSingleTask(task *models.Task, account *models.Acc
 			reason = "task not in ready status"
 		} else if time.Until(nextStart) > config.QUEUE_THRESHOLD {
 			reason = "too early to generate"
-		} else if time.Until(nextStart) < 0 {
-			reason = "task expired"
 		}
-
 		log.Info("[TaskService::GenerateSingleTask] task not ready",
 			zap.String("task", task.Name),
 			zap.Uint("task_id", task.ID),

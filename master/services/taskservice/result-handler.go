@@ -46,7 +46,6 @@ func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (
 			return nil, err
 		}
 		if response.TaskType == models.TASKTYPE_LOGIN {
-			tx.Commit()
 			log.Warn("[TaskService::HandleSingleResult] login task failed, no need to update task status",
 				zap.String("uuid", response.UUID),
 				zap.Uint("task_id", task.ID),

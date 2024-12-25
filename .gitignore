@@ -176,3 +176,5 @@ cython_debug/
 .idea/
 yamls/
 allure-results/
+*.log
+logs/
