@@ -171,14 +171,6 @@ func CreateAccount(c *gin.Context) {
 			zap.String("traceID", traceID),
 			zap.Error(err),
 		)
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
-			Message: "Failed to bind json",
-			TraceID: traceID,
-		})
-		return
-
 	}
 	err1 := verifyAccount(c, &account)
 	if err1 != nil {

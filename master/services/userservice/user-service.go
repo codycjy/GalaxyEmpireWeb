@@ -262,10 +262,6 @@ func (service *userService) GetById(ctx context.Context, id uint, fields []strin
 		}
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Failed To Find User By ID", err)
 	}
-	log.Info("[serviec]User got",
-		zap.String("traceID", traceID),
-		zap.Uint("UserID", user.ID),
-	)
 	return &user, nil
 }
 func (service *userService) getById(ctx context.Context, id uint, fields []string) (*models.User, *utils.ServiceError) {
@@ -311,7 +307,7 @@ func (service *userService) UpdateBalance(ctx context.Context, user *models.User
 	log.Info("[service]UpdateBalance",
 		zap.String("traceID", traceID),
 		zap.String("username", user.Username),
-		zap.Int("balance", user.Balance),
+		zap.Int64("balance", user.Balance),
 	)
 	result := service.DB.
 		Model(&models.User{}).

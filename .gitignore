@@ -175,7 +175,9 @@ cython_debug/
 
 .idea/
 yamls/
-logs/
+allure-results/
 *.log
 *.log.*
 *.yaml
+logs/
+_test*

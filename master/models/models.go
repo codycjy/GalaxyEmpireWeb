@@ -13,6 +13,9 @@ func AutoMigrate(db *gorm.DB) {
 		&Task{},
 		&Target{},
 		&TaskLog{},
+		&Payment{},
+		&PaymentIntention{},
+		&BalanceLog{},
 	)
 	if err != nil {
 		log.Fatal("Error during migration: %v",

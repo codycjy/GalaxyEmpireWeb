@@ -9,6 +9,7 @@ import (
 	"GalaxyEmpireWeb/services/accountservice"
 	"GalaxyEmpireWeb/services/captchaservice"
 	"GalaxyEmpireWeb/services/casbinservice"
+	"GalaxyEmpireWeb/services/paymentservice"
 	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/services/userservice"
 	"fmt"
@@ -27,6 +28,7 @@ func servicesInit(db *gorm.DB, rdb *r.Client, mq *queue.RabbitMQConnection) {
 	userservice.InitService(db, enforcer)
 	accountservice.InitService(db, enforcer)
 	taskservice.InitService(db, mq, enforcer)
+	paymentservice.InitService(db)
 }
 
 var rdb *r.Client
@@ -41,7 +43,9 @@ func main() {
 	db = mysql.GetDB()
 
 	models.AutoMigrate(db)
+
 	servicesInit(db, rdb, mq)
+
 	fmt.Println("Server is running on port 9333")
 
 	r := routes.RegisterRoutes()

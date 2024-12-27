@@ -10,7 +10,7 @@ type User struct {
 	Username string `gorm:"unique;not null" json:"username"`
 	// NOTE: Checked in db, DO api check
 	Password string    `gorm:"not null" json:"password"`
-	Balance  int       ` json:"balance"`
+	Balance  int64     ` json:"balance"`
 	Role     int       `json:"role"` // 0: normal user, 1: admin
 	Accounts []Account `gorm:"foreignKey:UserID" json:"accounts"`
 }
@@ -36,7 +36,7 @@ type UserDTO struct {
 	ID       uint         `json:"id"`
 	Username string       `json:"username"`
 	Accounts []AccountDTO `json:"accounts"`
-	Balance  int          `json:"balance"`
+	Balance  int64        `json:"balance"`
 }
 
 func (userDTO *UserDTO) ToModel() *User {

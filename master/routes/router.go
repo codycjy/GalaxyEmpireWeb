@@ -4,6 +4,7 @@ import (
 	"GalaxyEmpireWeb/api"
 	"GalaxyEmpireWeb/api/account"
 	"GalaxyEmpireWeb/api/auth"
+	"GalaxyEmpireWeb/api/payment"
 	"GalaxyEmpireWeb/api/task"
 	"GalaxyEmpireWeb/api/user"
 	"GalaxyEmpireWeb/docs"
@@ -24,16 +25,20 @@ func RegisterRoutes() *gin.Engine {
 	r.Use(middleware.TraceIDMiddleware())
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	v1 := r.Group("/api/v1")
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	v1.GET("/ping", api.Ping)
-	v1.GET("/captcha", api.GetCaptcha)
-	v1.GET("/captcha/:captchaID", api.GeneratePicture)
-	if os.Getenv("ENV") == "test" || os.Getenv("ESCAPE_CAPTCHA") != "" {
-		v1.POST("/login", auth.LoginHandler)
-		v1.POST("/register", user.CreateUser)
-	} else {
-		v1.POST("/login", middleware.CpatchaMiddleware(), auth.LoginHandler)
-		v1.POST("/register", middleware.CpatchaMiddleware(), user.CreateUser)
+	unprotectedRoutes := v1.Group("/")
+	{
+		unprotectedRoutes.POST("/webhook", payment.HandleWebhook)
+		unprotectedRoutes.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+		unprotectedRoutes.GET("/ping", api.Ping)
+		unprotectedRoutes.GET("/captcha", api.GetCaptcha)
+		unprotectedRoutes.GET("/captcha/:captchaID", api.GeneratePicture)
+		if os.Getenv("ENV") == "test" {
+			v1.POST("/login", auth.LoginHandler)
+			v1.POST("/register", user.CreateUser)
+		} else {
+			v1.POST("/login", middleware.CpatchaMiddleware(), auth.LoginHandler)
+			v1.POST("/register", middleware.CpatchaMiddleware(), user.CreateUser)
+		}
 	}
 	v1.Use(middleware.JWTAuthMiddleware())
 	u := v1.Group("/user")
@@ -65,6 +70,15 @@ func RegisterRoutes() *gin.Engine {
 		t.PUT("", task.UpdateTask)
 	}
 	task.RegisterPlanetRoutes(t)
+
+	p := v1.Group("/payment")
+	{
+		r.POST("/webhook", payment.HandleWebhook) // Doesn't need JWT
+		p.POST("/create-checkout", payment.CreateCheckoutSession)
+		p.POST("/deposit", payment.CreateDepositSession)
+		p.GET("/history", payment.GetPaymentHistory)
+		p.GET("/:payment_id", payment.GetPaymentStatus)
+	}
 
 	return r
 }
