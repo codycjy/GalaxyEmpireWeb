@@ -179,5 +179,6 @@ allure-results/
 *.log
 *.log.*
 *.yaml
+.vscode/
 logs/
 _test*
