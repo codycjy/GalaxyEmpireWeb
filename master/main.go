@@ -1,6 +1,7 @@
 package main
 
 import (
+	"GalaxyEmpireWeb/config"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/queue"
 	"GalaxyEmpireWeb/repositories/mysql"
@@ -13,9 +14,12 @@ import (
 	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/services/userservice"
 	"fmt"
+	"log"
+	"os"
 
 	r "github.com/redis/go-redis/v9"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -37,6 +41,10 @@ var mq *queue.RabbitMQConnection
 var enforcer casbinservice.Enforcer //WARN: Remember to initialize this variable before using it.
 
 func main() {
+	if err := config.LoadPrices(""); err != nil {
+		log.Fatal("Failed to load price configuration", zap.Error(err))
+	}
+
 	rdb = redis.GetRedisDB()
 	mq = queue.GetRabbitMQ()
 

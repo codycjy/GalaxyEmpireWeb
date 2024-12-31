@@ -1,7 +1,6 @@
 package userservice
 
 import (
-	"GalaxyEmpireWeb/consts"
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/casbinservice"
@@ -10,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 
 	"go.uber.org/zap"
@@ -24,8 +22,6 @@ type userService struct { // change to private for factory
 
 var userServiceInstance *userService
 var log = logger.GetLogger()
-var rolePrefix = consts.UserRolePrefix
-var expireTime = consts.ProdExpire
 
 const READ = 1 // TODO: change it later
 const WRITE = 2
@@ -43,9 +39,6 @@ func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
 	}
 	if userServiceInstance != nil {
 		return errors.New("UserService is already initialized")
-	}
-	if os.Getenv("ENV") == "test" {
-		expireTime = consts.TestExipre
 	}
 	userServiceInstance = NewService(db, enforcer)
 	return nil

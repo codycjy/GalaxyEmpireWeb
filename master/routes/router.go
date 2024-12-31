@@ -60,6 +60,7 @@ func RegisterRoutes() *gin.Engine {
 		a.DELETE("", account.DeleteAccount)
 		a.POST("/check", account.CheckAccountAvailable)
 		a.GET("/check/:uuid", account.CheckAccountByUUID)
+		a.POST("/extend", account.ExtendAccount)
 	}
 	t := v1.Group("/task")
 	{

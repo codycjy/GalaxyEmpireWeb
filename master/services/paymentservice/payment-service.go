@@ -27,12 +27,6 @@ type paymentService struct {
 	DB *gorm.DB
 }
 
-const (
-	DEPOSIT_10_USD = "price_1Qa5BOHV7ayy0qkuE1uOeZSK" // Replace with actual Stripe price IDs
-	DEPOSIT_30_USD = "price_1Qa5BOHV7ayy0qkuE1uOeZSK"
-	DEPOSIT_50_USD = "price_1Qa5BOHV7ayy0qkuE1uOeZSK"
-)
-
 func InitService(db *gorm.DB) {
 	stripeKey := config.GetStripeConfig().SecretKey
 	if stripeKey == "" {
@@ -405,9 +399,12 @@ func (ps *paymentService) fulfillOrder(ctx context.Context, payment *models.Paym
 	})
 }
 func getPriceAmount(priceID string) int64 {
-	// TODO: Implement price lookup from Stripe or your local cache
-	// For now returning a default amount
-	return 3000 // $10.00 in cents
+	for _, price := range config.GetPrices() {
+		if price.StripeID == priceID {
+			return price.Amount
+		}
+	}
+	return 0
 }
 
 // Add these functions to help with testing
@@ -467,7 +464,11 @@ func (ps *paymentService) GetPaymentStatus(ctx context.Context, sessionID string
 
 func (ps *paymentService) CreateDepositSession(ctx context.Context, amount int64) (*stripe.CheckoutSession, *utils.ServiceError) {
 	userID := utils.UserIDFromContext(ctx)
-	log.Info("[PaymentService] CreateDepositSession", zap.Uint("userID", userID), zap.String("traceID", utils.TraceIDFromContext(ctx)), zap.Int64("amount", amount))
+	log.Info("[PaymentService] CreateDepositSession",
+		zap.Uint("userID", userID),
+		zap.String("traceID", utils.TraceIDFromContext(ctx)),
+		zap.Int64("amount", amount))
+
 	if userID == 0 {
 		return nil, utils.NewServiceError(http.StatusUnauthorized, "User not authenticated", nil)
 	}
@@ -478,17 +479,18 @@ func (ps *paymentService) CreateDepositSession(ctx context.Context, amount int64
 		return nil, utils.NewServiceError(http.StatusNotFound, "User not found", err)
 	}
 
-	validAmounts := map[int64]string{ // TODO: Replace with actual price IDs
-		1000: DEPOSIT_10_USD,
-		3000: DEPOSIT_30_USD,
-		5000: DEPOSIT_50_USD,
-	}
-
-	priceID, valid := validAmounts[amount]
+	// Get Stripe price ID from config
+	priceID, valid := config.GetStripePrice(amount)
 	if !valid {
+		log.Error("[PaymentService] Invalid deposit amount",
+			zap.Int64("amount", amount),
+			zap.String("traceID", utils.TraceIDFromContext(ctx)))
 		return nil, utils.NewServiceError(http.StatusBadRequest, "Invalid deposit amount", nil)
 	}
-	log.Info("[PaymentService] CreateDepositSession", zap.String("priceID", priceID), zap.String("traceID", utils.TraceIDFromContext(ctx)))
+
+	log.Info("[PaymentService] CreateDepositSession",
+		zap.String("priceID", priceID),
+		zap.String("traceID", utils.TraceIDFromContext(ctx)))
 
 	return ps.CreateCheckoutSession(ctx, priceID)
 }

@@ -143,6 +143,16 @@ type TaskDTO struct { // TODO: finish func
 	Fleet     Fleet     `json:"fleet" gorm:"foreignKey:TaskID"`
 }
 
+func (t TaskDTO) ToModel() *Task {
+	return &Task{
+		Model:     t.Model,
+		Name:      t.Name,
+		NextStart: t.NextStart.Unix(),
+		Enabled:   t.Enabled,
+		AccountID: t.AccountID,
+	}
+}
+
 type SingleTaskRequest struct {
 	TaskID        uint        `json:"task_id"`
 	UUID          string      `json:"uuid"`
