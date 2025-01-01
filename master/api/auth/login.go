@@ -28,15 +28,7 @@ type authResponse struct {
 // @Router /login [post]
 func LoginHandler(c *gin.Context) {
 	traceID := utils.TraceIDFromContext(c)
-	userService, err := userservice.GetService(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
-			Succeed: false,
-			Error:   err.Error(),
-			Message: "Failed to get user service",
-			TraceID: traceID,
-		})
-	}
+	userService := userservice.GetService(c)
 	user := &models.User{}
 	if err := c.ShouldBindJSON(user); err != nil {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
@@ -66,7 +58,7 @@ func LoginHandler(c *gin.Context) {
 		})
 		return
 	}
-	token, err3 := jwtservice.GenerateToken(user.ID)
+	token, err3 := jwtservice.GenerateToken(user.ID, user.Role)
 	if err3 != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
