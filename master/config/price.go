@@ -8,6 +8,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Price represents a basic price structure
+type Price struct {
+	StripeID string
+	Amount   int64
+}
+
+// PriceConfig represents the full price configuration
 type PriceConfig struct {
 	Amount      int64  `yaml:"amount"`
 	StripeID    string `yaml:"stripe_id"`
@@ -133,17 +140,20 @@ func GetAvailablePrices() []PriceConfig {
 	return availablePrices
 }
 
-type Price struct {
-	StripeID string
-	Amount   int64
-}
-
-var Prices []Price
-
+// GetPrices returns all available prices in the simplified Price format
 func GetPrices() []Price {
-	return Prices
-}
+	if prices == nil {
+		LoadPrices("")
+	}
 
-func SetPrices(prices []Price) {
-	Prices = prices
+	var result []Price
+	for _, p := range prices.Prices {
+		if p.Available {
+			result = append(result, Price{
+				StripeID: p.StripeID,
+				Amount:   p.Amount,
+			})
+		}
+	}
+	return result
 }
