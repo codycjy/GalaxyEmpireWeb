@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -23,7 +24,7 @@ type userService struct { // change to private for factory
 var userServiceInstance *userService
 var log = logger.GetLogger()
 
-const READ = 1 // TODO: change it later
+const READ = 1
 const WRITE = 2
 
 func NewService(db *gorm.DB, enforcer casbinservice.Enforcer) *userService {
@@ -44,15 +45,15 @@ func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
 	return nil
 }
 
-func GetService(ctx context.Context) (*userService, error) { // TODO:
+func GetService(ctx context.Context) *userService {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]GetService", zap.String("traceID", traceID))
 
 	if userServiceInstance == nil {
-		log.DPanic("[service]UserService is not initialized", zap.String("traceID", traceID))
-		return nil, errors.New("UserService is not initialized")
+		log.Fatal("[service]UserService is not initialized", zap.String("traceID", traceID))
+		return nil
 	}
-	return userServiceInstance, nil
+	return userServiceInstance
 }
 
 func (service *userService) Create(ctx context.Context, user *models.User) *utils.ServiceError {
@@ -431,5 +432,86 @@ func (service *userService) LoginUser(ctx context.Context, user *models.User) *u
 		return utils.NewServiceError(http.StatusUnauthorized, "Wrong Password", err1)
 
 	}
+	return nil
+}
+
+func (s *userService) AdminUpdateBalance(ctx context.Context, userID uint, amount int64, reason string) *utils.ServiceError {
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// Lock user record
+		var user models.User
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			First(&user, userID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Warn("[service]AdminUpdateBalance failed - user not found",
+					zap.String("traceID", utils.TraceIDFromContext(ctx)),
+					zap.Uint("userID", userID),
+				)
+				return utils.NewServiceError(http.StatusNotFound, "User not found", err)
+			}
+			log.Error("[service]AdminUpdateBalance failed - user not found",
+				zap.String("traceID", utils.TraceIDFromContext(ctx)),
+				zap.Uint("userID", userID),
+				zap.Error(err),
+			)
+			return utils.NewServiceError(http.StatusInternalServerError, "Database error", err)
+		}
+
+		// Update user balance
+		newBalance := user.Balance + amount
+		if newBalance < 0 {
+			log.Warn("[service]AdminUpdateBalance failed - balance cannot be negative",
+				zap.String("traceID", utils.TraceIDFromContext(ctx)),
+				zap.Uint("userID", userID),
+				zap.Int64("amount", amount),
+				zap.Int64("newBalance", newBalance),
+			)
+			return utils.NewServiceError(http.StatusBadRequest, "Balance cannot be negative", nil)
+		}
+		if err := tx.Model(&user).Update("balance", newBalance).Error; err != nil {
+			log.Error("[service]AdminUpdateBalance failed - failed to update balance",
+				zap.String("traceID", utils.TraceIDFromContext(ctx)),
+				zap.Uint("userID", userID),
+				zap.Int64("amount", amount),
+				zap.Int64("newBalance", newBalance),
+				zap.Error(err),
+			)
+			return utils.NewServiceError(http.StatusInternalServerError, "Failed to update balance", err)
+		}
+
+		reason = fmt.Sprintf("Admin adjustment: %s", reason)
+		// Create balance log
+		balanceLog := &models.BalanceLog{
+			UserID:      userID,
+			Amount:      amount,
+			Type:        "admin_adjustment",
+			Reference:   uuid.New().String(),
+			Description: reason,
+			Balance:     newBalance,
+		}
+
+		if err := tx.Create(balanceLog).Error; err != nil {
+			log.Error("[service]AdminUpdateBalance failed - failed to create balance log",
+				zap.String("traceID", utils.TraceIDFromContext(ctx)),
+				zap.Uint("userID", userID),
+				zap.Int64("amount", amount),
+				zap.Error(err),
+			)
+			return utils.NewServiceError(http.StatusInternalServerError, "Failed to create balance log", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		if svcErr, ok := err.(*utils.ServiceError); ok {
+			return svcErr
+		}
+		log.Error("[service]AdminUpdateBalance failed - transaction failed",
+			zap.String("traceID", utils.TraceIDFromContext(ctx)),
+			zap.Error(err),
+		)
+		return utils.NewServiceError(http.StatusInternalServerError, "Transaction failed", err)
+	}
+
 	return nil
 }

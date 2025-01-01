@@ -27,6 +27,7 @@ func (ts *taskService) CheckAccountLogin(ctx context.Context, account *models.Ac
 		log.Error("[TaskService::CheckAccouuntLogin] failed to create task log", zap.Error(err1))
 		return "", utils.NewServiceError(http.StatusInternalServerError, "Create Task Log Error", err1)
 	}
+
 	loginTask := models.SingleTaskRequest{
 		UUID:      uuid,
 		Account:   *account.ToInfo(),
@@ -78,7 +79,6 @@ func (ts *taskService) GetLoginInfo(ctx context.Context, uuid string) bool {
 	}
 	log.Warn("[TaskService::GetLoginInfo] login timeout", zap.String("uuid", uuid))
 	return false
-
 }
 
 func (ts *taskService) QueryPlanetID(ctx context.Context, target *models.Target, account *models.Account) (string, *utils.ServiceError) {

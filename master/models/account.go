@@ -57,6 +57,7 @@ func (account *Account) ToDTO() *AccountDTO {
 		Tasks:    tasks,
 	}
 }
+
 func (account *Account) ToInfo() *AccountInfo {
 	return &AccountInfo{
 		Username: account.Username,

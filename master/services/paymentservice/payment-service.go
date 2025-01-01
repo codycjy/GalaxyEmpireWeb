@@ -87,6 +87,11 @@ func (ps *paymentService) CreateCheckoutSession(ctx context.Context, priceID str
 		Currency: "usd",
 		Status:   "pending",
 	}
+	log.Info("[PaymentService] Creating payment intention",
+		zap.String("traceID", traceID),
+		zap.Uint("userID", userID),
+		zap.Int64("amount", intention.Amount),
+		zap.String("priceID", priceID))
 
 	if err := ps.DB.Create(intention).Error; err != nil {
 		log.Error("[PaymentService] Failed to create payment intention",
@@ -399,11 +404,22 @@ func (ps *paymentService) fulfillOrder(ctx context.Context, payment *models.Paym
 	})
 }
 func getPriceAmount(priceID string) int64 {
+	// First try to get price from configuration
 	for _, price := range config.GetPrices() {
 		if price.StripeID == priceID {
 			return price.Amount
 		}
 	}
+
+	// Fallback: try to get from price configuration
+	for _, priceConfig := range config.GetAvailablePrices() {
+		if priceConfig.StripeID == priceID {
+			return priceConfig.Amount
+		}
+	}
+
+	log.Error("[PaymentService] Price not found",
+		zap.String("priceID", priceID))
 	return 0
 }
 

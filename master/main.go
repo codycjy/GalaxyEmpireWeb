@@ -15,7 +15,6 @@ import (
 	"GalaxyEmpireWeb/services/userservice"
 	"fmt"
 	"log"
-	"os"
 
 	r "github.com/redis/go-redis/v9"
 

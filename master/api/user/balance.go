@@ -2,61 +2,66 @@ package user
 
 import (
 	"GalaxyEmpireWeb/api"
-	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/userservice"
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
-// UpdateUser godoc
-// @Summary Update a user balance
-// @Description Update a user balance
-// @Tags user
+type updateBalanceResponse struct {
+	UserID  uint   `json:"user_id"`
+	Succeed bool   `json:"succeed"`
+	Message string `json:"message"`
+}
+type updateBalanceRequest struct {
+	UserID uint   `json:"user_id" binding:"required"`
+	Amount int64  `json:"amount" binding:"required"`
+	Reason string `json:"reason" binding:"required"`
+}
+
+// UpdateBalance godoc
+// @Summary Admin update user balance
+// @Description Admin API to directly modify user balance
+// @Tags admin
 // @Accept json
 // @Produce json
-// @Param id path int true "User ID"
-// @Success 200 {object} userResponse "Successful response with user data"
-// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
-// @Failure 404 {object} api.ErrorResponse "Not Found with error message"
-// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
-// @Router /user/balance [put]
+// @Security ApiKeyAuth
+// @Param request body updateBalanceRequest true "Update balance request"
+// @Success 200 {object} updateBalanceResponse
+// @Failure 401 {object} api.ErrorResponse "Unauthorized"
+// @Failure 400 {object} api.ErrorResponse "Bad Request"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error"
+// @Router /admin/user/balance [put]
 func UpdateBalance(c *gin.Context) {
-	var user *models.User
+	var req updateBalanceRequest
 	uuid := c.GetString("traceID")
-	ctx := context.WithValue(context.Background(), "traceID", uuid)
-	err := c.ShouldBindJSON(user)
-	if err != nil {
+	log.Info("[user]UpdateBalance", zap.String("traceID", uuid))
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Error("[API::Balance]UpdateBalance Failed to bind request body", zap.String("traceID", uuid), zap.Error(err))
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
-			Message: "Failed to bind user",
+			Message: "Invalid request body",
 		})
 		return
 	}
-	userservice, err := userservice.GetService(ctx)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+
+	userService := userservice.GetService(c)
+
+	if err := userService.AdminUpdateBalance(c, req.UserID, req.Amount, req.Reason); err != nil {
+		c.JSON(err.StatusCode(), api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
-			Message: "User service not initialized",
+			Message: err.Msg(),
 		})
+		return
+	}
 
-		return
-	}
-	serviceErr := userservice.UpdateBalance(ctx, user)
-	if serviceErr != nil {
-		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
-			Succeed: false,
-			Error:   serviceErr.Error(),
-			Message: serviceErr.Msg(),
-		})
-		return
-	}
-	userDTO := user.ToDTO()
-	c.JSON(http.StatusOK, userResponse{
+	c.JSON(http.StatusOK, updateBalanceResponse{
 		Succeed: true,
-		Data:    userDTO,
+		UserID:  req.UserID,
+		Message: "Balance updated successfully",
 	})
 }
