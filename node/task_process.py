@@ -5,13 +5,15 @@ from model.task import Task, TaskType, TaskResult, TaskStatus
 from actions.login import login_action
 from actions.attack import attack_action, explore_action
 from actions.query_planet import query_planet_action
+from proxy_pool.proxy_pool import ProxyPool
 
 
 class TaskProcessor:
-    def __init__(self, task_queue: Queue, result_queue: Queue, max_workers=5):
+    def __init__(self, task_queue: Queue, result_queue: Queue, proxy_pool: ProxyPool, max_workers=5):
         self.task_queue = task_queue
         self.result_queue = result_queue
-        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.proxy_pool = proxy_pool
+        self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix='TaskWorker')
         self.is_running = True
         self._logger = logging.getLogger(__name__)
 
@@ -33,7 +35,8 @@ class TaskProcessor:
                 self.executor.submit(
                     action,
                     task,
-                    self.result_queue
+                    self.result_queue,
+                    self.proxy_pool
                 )
             else:
                 self._logger.error(f"Unknown task type: {task.task_type}")

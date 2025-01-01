@@ -2,6 +2,7 @@ import logging
 import time
 from queue import Queue
 from network import Network, NetworkResponse
+from proxy_pool.proxy_pool import ProxyPool
 from model.user import Account
 from model.task import Task, TaskType, MissionType
 
@@ -9,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class Galaxy(Network):
-    def __init__(self, user: Account, result_queue: Queue):
-        super().__init__(user)
+    def __init__(self, user: Account, result_queue: Queue, proxy_pool: ProxyPool):
+        super().__init__(user, proxy_pool)
         self.user = user
         self.result_queue = result_queue
         logger.info("Galaxy instance created.")

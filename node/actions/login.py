@@ -2,11 +2,11 @@ import logging
 from queue import Queue
 from network import Network
 from model.task import TaskType, TaskResult, TaskStatus, Task
-
+from proxy_pool.proxy_pool import ProxyPool
 logger = logging.getLogger(__name__)
 
 
-def login_action(task: Task, result_queue: Queue):
+def login_action(task: Task, result_queue: Queue, proxy_pool: ProxyPool):
     """
     Handle login task and put result in queue.
 
@@ -20,7 +20,7 @@ def login_action(task: Task, result_queue: Queue):
             status = TaskStatus.FAILED
         else:
             logger.info("Processing login task for user: %s", task.account.username)
-            network = Network(task.account)
+            network = Network(task.account, proxy_pool)
             response = network.login()
 
             status = TaskStatus.SUCCESS if response.status == 0 else TaskStatus.FAILED

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from model.user import Account
 from config import serverUrlList, PROXY_BASE_URL, PROXY_AUTH_PASS, PROXY_AUTH_USER
 from utils import crypto, md5
+from proxy_pool.proxy_pool import ProxyPool
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class NetworkResponse:
 
 
 class Network:
-    def __init__(self, user: Account):
+    def __init__(self, user: Account, proxy_pool: ProxyPool):
         self.server = user.server
         self.username = user.username
         self.password = user.password
@@ -41,41 +42,48 @@ class Network:
         self.ready = True
         self.max_login_retries = 3  # Maximum retry attempts
         self.login_retry_count = 0   # Current retry count
-        self.proxy = None
         self.planet_id_table = {}
+        self.proxy_pool = proxy_pool
 
         if os.getenv('PROXY', False):
+            self.ready = False
             self.set_proxy()
+        else:
+            self.ready = True
 
-    def set_proxy(self):
+    def set_proxy(self, max_retries: int = 3, initial_delay: float = 1):
         """
-        Set up the proxy for the session.
+        Set up the proxy for the session with exponential backoff.
+
+        Args:
+            max_retries (int): Maximum number of retry attempts
+            initial_delay (float): Initial delay in seconds before first retry
         """
         self.ready = False
-        HTTP_ENDPOINT = '/get/?type=http'
-        proxy_url = f"{PROXY_BASE_URL}{HTTP_ENDPOINT}"
-        logger.info("Attempting to set proxy...")
-        try:
-            response = self.session.get(proxy_url,
-                                        auth=(PROXY_AUTH_USER, PROXY_AUTH_PASS),
-                                        timeout=5)
-            response.raise_for_status()
-            proxy = response.json()
 
-            if "proxy" in proxy:
-                self.session.proxies = {
-                    "http": proxy["proxy"],
-                    "https": proxy["proxy"]
-                }
-                logger.info(f"Proxy set to {proxy['proxy']}")
-                self.ready = True
-                self.proxy = proxy
-            else:
-                logger.error("Invalid proxy response format.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get proxy: {e}")
-        except ValueError as e:
-            logger.error(f"Invalid JSON response while setting proxy: {e}")
+        for attempt in range(max_retries + 1):
+            proxy = self.proxy_pool.get_proxy()
+            if proxy:
+                try:
+                    self.session.proxies = {
+                        "http": proxy,
+                    }
+                    # Test the proxy with a simple request
+                    self.session.get("http://example.com", timeout=5)
+                    logger.info(f"Proxy set successfully to {proxy}")
+                    self.ready = True
+                    return
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f"Proxy {proxy} failed: {e}")
+                    self.proxy_pool.delete_proxy(proxy)
+
+                    if attempt < max_retries:
+                        delay = initial_delay * (2 ** attempt)  # Exponential backoff
+                        logger.warning(f"Retrying proxy setup in {delay} seconds...")
+                        time.sleep(delay)
+                    continue
+
+        logger.error("Failed to set up proxy after all attempts")
 
     def _post(self, url: str, args: dict = {}) -> NetworkResponse:
         """
@@ -234,17 +242,6 @@ class Network:
             planet_id_table[position] = planet_id
             planet_id_table[planet_id] = position
         self.planet_id_table = planet_id_table
-
-    def __del__(self):
-        self.session.close()
-        if self.proxy:
-            # Delete proxy
-            try:
-                response = self.session.get(f"{PROXY_BASE_URL}/delete/?proxy={self.proxy}", auth=(PROXY_AUTH_USER, PROXY_AUTH_PASS), timeout=5)
-                response.raise_for_status()
-                logger.info("Proxy deleted successfully.")
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Failed to delete proxy: {e}")
 
 
 if __name__ == "__main__":

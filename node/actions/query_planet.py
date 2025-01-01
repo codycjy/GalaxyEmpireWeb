@@ -30,4 +30,3 @@ def query_planet_action(task: Task, result_queue: Queue):
         task_result.err_msg = str(e)
     finally:
         result_queue.put(task_result)
-

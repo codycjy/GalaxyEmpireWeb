@@ -14,7 +14,7 @@ from config import (
     RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_PASS,
     TASK_QUEUE, RESULT_QUEUE
 )
-
+from proxy_pool.proxy_pool import ProxyPool
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s'
@@ -28,7 +28,7 @@ class Worker:
         self.result_queue = Queue()
         self.shutdown_event = Event()
         self.threads = []
-
+        self.proxy_pool = ProxyPool()
         # Initialize Publisher and Consumer
         self.publisher = RabbitMQPublisher(
             host=RABBITMQ_HOST,
@@ -42,7 +42,7 @@ class Worker:
             username=RABBITMQ_USER,
             password=RABBITMQ_PASS
         )
-        self.task_processor = TaskProcessor(self.task_queue, self.result_queue)
+        self.task_processor = TaskProcessor(self.task_queue, self.result_queue, self.proxy_pool)
 
     def publish_results(self, queue_name: str):
         """Thread target for publishing results to RabbitMQ."""
