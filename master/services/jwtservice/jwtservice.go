@@ -14,12 +14,13 @@ var jwtKey_test = []byte("ab9812bef66342192d64257d")
 
 type userClaims struct {
 	UserID uint `json:"user_id"`
+	Role   int  `json:"role"`
 	jwt.RegisteredClaims
 }
 
 var log = logger.GetLogger()
 
-func GenerateToken(UserID uint) (string, error) {
+func GenerateToken(UserID uint, Role int) (string, error) {
 	var expireTime = 24 * time.Hour
 	// 测试环境下token有效期为15s
 	var jwtKey []byte
@@ -33,6 +34,7 @@ func GenerateToken(UserID uint) (string, error) {
 	}
 	claims := userClaims{
 		UserID: UserID,
+		Role:   int(Role),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expireTime)), // 存在时间
 		},

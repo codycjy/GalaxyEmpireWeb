@@ -3,7 +3,6 @@ package middleware
 import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/services/jwtservice"
-	"GalaxyEmpireWeb/services/userservice"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,15 +24,13 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
-		userService, err := userservice.GetService(c)
-		log.Info("[middleware]JWTAuthMiddleware", zap.Uint("UserID", claims.UserID))
+		log.Info("[middleware]JWTAuthMiddleware", zap.Uint("UserID", claims.UserID), zap.Int("role", claims.Role))
 
-		role := userService.GetUserRole(c, claims.UserID)
 		// 设置上下文
 		c.Set("claims", claims)
-		c.Set("role", role)
+		c.Set("role", claims.Role)
 		c.Set("userID", claims.UserID)
-		log.Info("[middleware]JWTAuthMiddleware", zap.String("traceID", c.GetString("traceID")), zap.Int("role", role), zap.Uint("UserID", claims.UserID))
+		log.Info("[middleware]JWTAuthMiddleware", zap.String("traceID", c.GetString("traceID")), zap.Int("role", claims.Role), zap.Uint("UserID", claims.UserID))
 		c.Next()
 
 	}
