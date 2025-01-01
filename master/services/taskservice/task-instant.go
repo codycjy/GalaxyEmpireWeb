@@ -72,7 +72,6 @@ func (ts *taskService) GetLoginInfo(ctx context.Context, uuid string) (*TaskStat
 		log.Error("[TaskService::GetLoginInfo] failed to get task log", zap.Error(err))
 		return nil, err
 	}
-
 	status := &TaskStatus{}
 	switch taskLog.Status {
 	case models.TASK_RESULT_RUNNING:
