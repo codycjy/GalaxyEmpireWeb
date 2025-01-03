@@ -46,6 +46,8 @@ definitions:
     properties:
       token:
         type: string
+      user:
+        $ref: '#/definitions/models.UserDTO'
     type: object
   gorm.DeletedAt:
     properties:
@@ -135,6 +137,63 @@ definitions:
       updatedAt:
         type: string
     type: object
+  models.Payment:
+    properties:
+      amount:
+        type: integer
+      createdAt:
+        type: string
+      currency:
+        type: string
+      customer_email:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        type: string
+      failure_reason:
+        type: string
+      fulfilled_at:
+        type: string
+      id:
+        type: integer
+      idempotency_key:
+        type: string
+      metadata:
+        type: string
+      paid_at:
+        type: string
+      payment_intent:
+        type: string
+      refund_status:
+        type: string
+      session_id:
+        type: string
+      status:
+        $ref: '#/definitions/models.PaymentStatus'
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      user_id:
+        type: integer
+    type: object
+  models.PaymentStatus:
+    enum:
+    - pending
+    - succeeded
+    - failed
+    - canceled
+    - refunded
+    - disputed
+    type: string
+    x-enum-varnames:
+    - PaymentStatusPending
+    - PaymentStatusSucceeded
+    - PaymentStatusFailed
+    - PaymentStatusCanceled
+    - PaymentStatusRefunded
+    - PaymentStatusDisputed
   models.Target:
     properties:
       createdAt:
@@ -178,6 +237,10 @@ definitions:
         description: Unix timestamp seconds
         type: integer
       repeat:
+        type: integer
+      start_planet:
+        $ref: '#/definitions/models.Target'
+      start_planet_id:
         type: integer
       status:
         type: string
@@ -263,6 +326,29 @@ definitions:
       username:
         type: string
     type: object
+  task.GetPlanetIDResponse:
+    properties:
+      planet_id:
+        type: integer
+      succeed:
+        type: boolean
+      trace_id:
+        type: string
+    type: object
+  task.QueryPlanetIDRequest:
+    properties:
+      account:
+        $ref: '#/definitions/models.Account'
+      target:
+        $ref: '#/definitions/models.Target'
+    type: object
+  task.QueryPlanetIDResponse:
+    properties:
+      trace_id:
+        type: string
+      uuid:
+        type: string
+    type: object
   task.accountTaskResponse:
     properties:
       data:
@@ -280,6 +366,28 @@ definitions:
         type: boolean
       traceID:
         type: string
+    type: object
+  user.updateBalanceRequest:
+    properties:
+      amount:
+        type: integer
+      reason:
+        type: string
+      user_id:
+        type: integer
+    required:
+    - amount
+    - reason
+    - user_id
+    type: object
+  user.updateBalanceResponse:
+    properties:
+      message:
+        type: string
+      succeed:
+        type: boolean
+      user_id:
+        type: integer
     type: object
   user.userResponse:
     properties:
@@ -392,6 +500,44 @@ paths:
       summary: Get account by ID
       tags:
       - account
+  /account/extend:
+    post:
+      consumes:
+      - application/json
+      description: Extends the account expiry time by 31 days for config.ExtendPrice
+      parameters:
+      - description: Account to extend
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/models.Account'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account extended successfully
+          schema:
+            $ref: '#/definitions/account.accountResponse'
+        "400":
+          description: Bad Request with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden - Account not owned by user
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error with error message
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Extend account time by 31 days
+      tags:
+      - account
   /account/user/{id}:
     get:
       consumes:
@@ -425,6 +571,42 @@ paths:
       summary: Get account by User ID
       tags:
       - account
+  /admin/user/balance:
+    put:
+      consumes:
+      - application/json
+      description: Admin API to directly modify user balance
+      parameters:
+      - description: Update balance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.updateBalanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.updateBalanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Admin update user balance
+      tags:
+      - admin
   /captcha:
     get:
       consumes:
@@ -500,6 +682,148 @@ paths:
       summary: User Login
       tags:
       - auth
+  /payment/{payment_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get the status of a specific payment
+      parameters:
+      - description: Payment ID
+        in: path
+        name: payment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Payment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get payment status
+      tags:
+      - payment
+  /payment/create-checkout:
+    post:
+      consumes:
+      - application/json
+      description: Creates a Stripe checkout session for payment
+      parameters:
+      - description: Stripe Price ID
+        in: query
+        name: price_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a checkout session
+      tags:
+      - payment
+  /payment/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Creates a Stripe checkout session for deposit
+      parameters:
+      - description: Deposit amount in cents (1000 for $10, 2000 for $20, 5000 for
+          $50)
+        in: query
+        name: amount
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a deposit session
+      tags:
+      - payment
+  /payment/history:
+    get:
+      consumes:
+      - application/json
+      description: Get payment history for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Payment'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get payment history
+      tags:
+      - payment
+  /payment/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Handles Stripe webhook events
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Handle Stripe webhook
+      tags:
+      - payment
   /ping:
     get:
       consumes:
@@ -609,6 +933,65 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get task by Account ID
+      tags:
+      - task
+  /task/planet/{uuid}:
+    get:
+      consumes:
+      - application/json
+      description: Get the planet ID from a previous query task
+      parameters:
+      - description: Task UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.GetPlanetIDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get planet ID
+      tags:
+      - task
+  /task/planet/query:
+    post:
+      consumes:
+      - application/json
+      description: Start a task to query a planet's ID
+      parameters:
+      - description: Query parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/task.QueryPlanetIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/task.QueryPlanetIDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Query planet ID
       tags:
       - task
   /user:
@@ -726,39 +1109,6 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get user by ID
-      tags:
-      - user
-  /user/balance:
-    put:
-      consumes:
-      - application/json
-      description: Update a user balance
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successful response with user data
-          schema:
-            $ref: '#/definitions/user.userResponse'
-        "400":
-          description: Bad Request with error message
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found with error message
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error with error message
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update a user balance
       tags:
       - user
   /users:

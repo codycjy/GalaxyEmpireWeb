@@ -17,7 +17,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param account body models.Account true "Account to extend"
-// @Success 200 {object} api.SuccessResponse
+// @Success 200 {object} accountResponse "Account extended successfully"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 401 {object} api.ErrorResponse "Unauthorized"
 // @Failure 403 {object} api.ErrorResponse "Forbidden - Account not owned by user"

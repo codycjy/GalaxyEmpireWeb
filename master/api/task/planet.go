@@ -33,14 +33,14 @@ type GetPlanetIDResponse struct {
 // QueryPlanetID initiates a planet ID query task
 // @Summary Query planet ID
 // @Description Start a task to query a planet's ID
-// @Tags Task
+// @Tags task
 // @Accept json
 // @Produce json
 // @Param request body QueryPlanetIDRequest true "Query parameters"
 // @Success 200 {object} QueryPlanetIDResponse
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
-// @Router /api/task/planet/query [post]
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /task/planet/query [post]
 func QueryPlanetID(c *gin.Context) {
 	var req QueryPlanetIDRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -75,14 +75,14 @@ func QueryPlanetID(c *gin.Context) {
 // GetPlanetID retrieves the planet ID from a previous query
 // @Summary Get planet ID
 // @Description Get the planet ID from a previous query task
-// @Tags Task
+// @Tags task
 // @Accept json
 // @Produce json
 // @Param uuid path string true "Task UUID"
 // @Success 200 {object} GetPlanetIDResponse
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
-// @Router /api/task/planet/{uuid} [get]
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /task/planet/{uuid} [get]
 func GetPlanetID(c *gin.Context) {
 	uuid := c.Param("uuid")
 	if uuid == "" {

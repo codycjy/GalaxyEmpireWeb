@@ -58,8 +58,8 @@ func CreateCheckoutSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {string} string "ok"
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /payment/webhook [post]
 func HandleWebhook(c *gin.Context) {
 	// Read the request body
@@ -112,8 +112,8 @@ func HandleWebhook(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {array} models.Payment
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /payment/history [get]
 func GetPaymentHistory(c *gin.Context) {
 	userID := utils.UserIDFromContext(c)
@@ -137,9 +137,9 @@ func GetPaymentHistory(c *gin.Context) {
 // @Produce json
 // @Param payment_id path string true "Payment ID"
 // @Success 200 {object} models.Payment
-// @Failure 400 {object} utils.ErrorResponse
-// @Failure 404 {object} utils.ErrorResponse
-// @Failure 500 {object} utils.ErrorResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 404 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /payment/{payment_id} [get]
 func GetPaymentStatus(c *gin.Context) {
 	paymentID := c.Param("payment_id")
