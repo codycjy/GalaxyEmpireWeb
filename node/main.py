@@ -11,13 +11,19 @@ from model.task import TaskResult
 from rabbitmq import RabbitMQPublisher, RabbitMQConsumer
 from task_process import TaskProcessor
 from config import (
-    RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_PASS,
-    TASK_QUEUE, RESULT_QUEUE
+    RABBITMQ_HOST,
+    RABBITMQ_PORT,
+    RABBITMQ_USER,
+    RABBITMQ_PASS,
+    TASK_QUEUE,
+    RESULT_QUEUE,
 )
+from utils import updateServerUrl
 from proxy_pool.proxy_pool import ProxyPool
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -34,15 +40,17 @@ class Worker:
             host=RABBITMQ_HOST,
             port=RABBITMQ_PORT,
             username=RABBITMQ_USER,
-            password=RABBITMQ_PASS
+            password=RABBITMQ_PASS,
         )
         self.consumer = RabbitMQConsumer(
             host=RABBITMQ_HOST,
             port=RABBITMQ_PORT,
             username=RABBITMQ_USER,
-            password=RABBITMQ_PASS
+            password=RABBITMQ_PASS,
         )
-        self.task_processor = TaskProcessor(self.task_queue, self.result_queue, self.proxy_pool)
+        self.task_processor = TaskProcessor(
+            self.task_queue, self.result_queue, self.proxy_pool
+        )
 
     def publish_results(self, queue_name: str):
         """Thread target for publishing results to RabbitMQ."""
@@ -57,22 +65,26 @@ class Worker:
                 while retry_count < max_retries and not self.shutdown_event.is_set():
                     try:
                         message = result.to_dict()
-                        message['status'] = message['status'].value
-                        message['task_type'] = message['task_type'].value
+                        message["status"] = message["status"].value
+                        message["task_type"] = message["task_type"].value
                         success = self.publisher.publish(queue_name, message)
                         if success:
                             logger.info(f"Published result for task {result.task_id}")
                             break
                     except Exception as e:
                         retry_count += 1
-                        logger.error(f"Publish error: {e}, retry {retry_count}/{max_retries}")
+                        logger.error(
+                            f"Publish error: {e}, retry {retry_count}/{max_retries}"
+                        )
                         time.sleep(backoff)
                         backoff *= 2  # Exponential backoff
 
                 if retry_count >= max_retries:
-                    logger.error("Failed to publish task %d after %d retries",
-                                 result.task_id,
-                                 max_retries)
+                    logger.error(
+                        "Failed to publish task %d after %d retries",
+                        result.task_id,
+                        max_retries,
+                    )
                     # Optionally, push to a dead-letter queue or handle accordingly
 
             except Empty:
@@ -110,7 +122,9 @@ class Worker:
         processor_thread.start()
 
         # Start Result Publisher in a separate thread
-        publisher_thread = Thread(target=self.publish_results, args=(RESULT_QUEUE,), daemon=True)
+        publisher_thread = Thread(
+            target=self.publish_results, args=(RESULT_QUEUE,), daemon=True
+        )
         self.threads.append(publisher_thread)
         publisher_thread.start()
 
@@ -179,6 +193,18 @@ def run_forever():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+def updateServerUrlLoop():
+    while True:
+        try:
+            updateServerUrl()
+            time.sleep(300)
+        except Exception as e:
+            logger.error(f"Error updating server list: {e}")
+            time.sleep(60)
+
+
+if __name__ == "__main__":
     logger.info(os.environ)
+    Thread(target=updateServerUrlLoop, daemon=True).start()
+    time.sleep(5)
     run_forever()
