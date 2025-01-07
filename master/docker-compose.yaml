@@ -1,11 +1,13 @@
 services:
   app:
     build:
-      dockerfile: Dockerfile  # Path to the Dockerfile
+      dockerfile: Dockerfile # Path to the Dockerfile
     container_name: galaxy-master # Name of the container
     ports:
-      - "9333:9333"  # Map port 8080 on the host to port 8080 in the container
+      - "9333:9333" # Map port 8080 on the host to port 8080 in the container
     volumes:
-      - ./config:/app/config  # Mount the config directory to the container
+      - ./config:/app/config # Mount the config directory to the container
 
-    restart: unless-stopped  # Restart policy
+    restart: unless-stopped # Restart policy
+    environment:
+      JWT_KEY: ${JWT_KEY}

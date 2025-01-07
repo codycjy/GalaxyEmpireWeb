@@ -5,7 +5,7 @@ import logging
 import requests
 from dataclasses import dataclass
 from model.user import Account
-from config import serverUrlList, PROXY_BASE_URL, PROXY_AUTH_PASS, PROXY_AUTH_USER
+from config import serverUrlList
 from utils import crypto, md5
 from proxy_pool.proxy_pool import ProxyPool
 
@@ -13,15 +13,15 @@ from proxy_pool.proxy_pool import ProxyPool
 logger = logging.getLogger(__name__)
 
 headers = {
-    'User-Agent': 'android',
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+    "User-Agent": "android",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
 }
 
 
 def addArgs(args):  # TODO: move me later
     if not args:
         return ""
-    return '&' + '&'.join(f"{key}={value}" for key, value in args.items())
+    return "&" + "&".join(f"{key}={value}" for key, value in args.items())
 
 
 @dataclass
@@ -41,11 +41,11 @@ class Network:
         self.session = requests.Session()
         self.ready = True
         self.max_login_retries = 3  # Maximum retry attempts
-        self.login_retry_count = 0   # Current retry count
+        self.login_retry_count = 0  # Current retry count
         self.planet_id_table = {}
         self.proxy_pool = proxy_pool
 
-        if os.getenv('PROXY', False):
+        if os.getenv("PROXY", False):
             self.ready = False
             self.set_proxy()
         else:
@@ -78,7 +78,7 @@ class Network:
                     self.proxy_pool.delete_proxy(proxy)
 
                     if attempt < max_retries:
-                        delay = initial_delay * (2 ** attempt)  # Exponential backoff
+                        delay = initial_delay * (2**attempt)  # Exponential backoff
                         logger.warning(f"Retrying proxy setup in {delay} seconds...")
                         time.sleep(delay)
                     continue
@@ -116,19 +116,23 @@ class Network:
             return NetworkResponse(status=-1, data={}, err_msg=err_msg)
 
         try:
-            req = self.session.post(full_url, headers=headers, data=crypto(full_url), timeout=5)
+            req = self.session.post(
+                full_url, headers=headers, data=crypto(full_url), timeout=5
+            )
             req.raise_for_status()
             data = req.json()
             logger.debug(f"Response JSON: {data}")
 
-            if data.get('status') != 'error':
+            if data.get("status") != "error":
                 self.login_retry_count = 0  # Reset retry count on successful response
                 return NetworkResponse(status=0, data=data)
 
-            if data.get('err_code') == 111:
+            if data.get("err_code") == 111:
                 if self.login_retry_count >= self.max_login_retries:
                     logger.error("Max login retries exceeded")
-                    return NetworkResponse(status=-1, data={}, err_msg="Max login retries exceeded")
+                    return NetworkResponse(
+                        status=-1, data={}, err_msg="Max login retries exceeded"
+                    )
 
                 logger.warning("Session expired. Attempting to relogin...")
                 self.login_retry_count += 1
@@ -137,7 +141,7 @@ class Network:
                     return self._post(url, args)
                 return login_response
 
-            return NetworkResponse(status=-1, data={}, err_msg=data.get('err_msg', ''))
+            return NetworkResponse(status=-1, data={}, err_msg=data.get("err_msg", ""))
 
         except requests.exceptions.Timeout:
             logger.error("Request timed out.")
@@ -173,8 +177,8 @@ class Network:
 
         if result.status == 0:
             loginResult = result.data
-            self.ppy_id = loginResult.get('ppy_id')
-            self.ssid = loginResult.get('ssid')
+            self.ppy_id = loginResult.get("ppy_id")
+            self.ssid = loginResult.get("ssid")
             logger.info("Login successful.")
             return NetworkResponse(status=0, data=loginResult)
         else:
@@ -190,7 +194,9 @@ class Network:
         """
         return {"sess_id": self.ssid, "ppy_id": self.ppy_id}
 
-    def change_planet(self, planetId: int = 0, max_retries: int = 3, initial_delay: float = 5) -> NetworkResponse:
+    def change_planet(
+        self, planetId: int = 0, max_retries: int = 3, initial_delay: float = 5
+    ) -> NetworkResponse:
         """
         Change the active planet with exponential backoff retry mechanism.
 
@@ -202,7 +208,7 @@ class Network:
         Returns:
             NetworkResponse: The response wrapped in NetworkResponse.
         """
-        url = 'game.php?page=buildings'
+        url = "game.php?page=buildings"
         args = {}
         logging.info("Updating planet ID table...")
         if planetId:
@@ -210,11 +216,13 @@ class Network:
             args["cp"] = planetId
 
         for attempt in range(max_retries + 1):
-            logger.info(f"Changing planet to ID: {planetId} (Attempt {attempt + 1}/{max_retries + 1})")
+            logger.info(
+                f"Changing planet to ID: {planetId} (Attempt {attempt + 1}/{max_retries + 1})"
+            )
 
             result = self._post(url, args)
             if result.status == 0:
-                data = result.data.get('result')
+                data = result.data.get("result")
                 if data:
                     logger.info("Planet changed successfully.")
                     self.update_planet_id_table(data)
@@ -222,23 +230,35 @@ class Network:
             logger.error(f"Failed to change planet: {result.err_msg}")
 
             if attempt < max_retries:
-                delay = initial_delay * (2 ** attempt)  # Exponential backoff
-                logger.warning(f"Failed to change planet. Retrying in {delay} seconds...")
+                delay = initial_delay * (2**attempt)  # Exponential backoff
+                logger.warning(
+                    f"Failed to change planet. Retrying in {delay} seconds..."
+                )
                 time.sleep(delay)
 
         logger.error(f"Failed to change planet after {max_retries + 1} attempts.")
-        return NetworkResponse(status=-1, data={}, err_msg=f"Failed to change planet after {max_retries + 1} attempts")
+        return NetworkResponse(
+            status=-1,
+            data={},
+            err_msg=f"Failed to change planet after {max_retries + 1} attempts",
+        )
 
     def update_planet_id_table(self, full_data: dict):
         logger.debug("Updating planet ID table...")
 
-        planets_data = full_data.get("buildInfo", {}).get("result", {}).get("Planets", {})
+        planets_data = (
+            full_data.get("buildInfo", {}).get("result", {}).get("Planets", {})
+        )
         planet_id_table = {}
         for planet_id, planet_data in planets_data.items():
-            position = ":".join([str(planet_data["galaxy"]),
-                                 str(planet_data["system"]),
-                                 str(planet_data["planet"]),
-                                 str(int(int(planet_data["planet_type"]) == 3))])
+            position = ":".join(
+                [
+                    str(planet_data["galaxy"]),
+                    str(planet_data["system"]),
+                    str(planet_data["planet"]),
+                    str(int(int(planet_data["planet_type"]) == 3)),
+                ]
+            )
             planet_id_table[position] = planet_id
             planet_id_table[planet_id] = position
         self.planet_id_table = planet_id_table
@@ -247,9 +267,9 @@ class Network:
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler("network.log")
-        ]
+            logging.FileHandler("network.log"),
+        ],
     )
