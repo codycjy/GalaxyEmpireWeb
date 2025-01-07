@@ -24,10 +24,12 @@ type accountService struct {
 	Enforcer casbinservice.Enforcer
 }
 
-var accountServiceInstance *accountService
-var log = logger.GetLogger()
-var accountListPrefix = consts.UserAccountPrefix
-var expireTime = consts.ProdExpire
+var (
+	accountServiceInstance *accountService
+	log                    = logger.GetLogger()
+	accountListPrefix      = consts.UserAccountPrefix
+	expireTime             = consts.ProdExpire
+)
 
 const (
 	READ  = 1
@@ -40,6 +42,7 @@ func NewService(db *gorm.DB, enforcer casbinservice.Enforcer) *accountService {
 		Enforcer: enforcer,
 	}
 }
+
 func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
 	if accountServiceInstance != nil {
 		return errors.New("AccountService is already initialized")
@@ -51,6 +54,7 @@ func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
 	log.Info("[service] Account service Initialized")
 	return nil
 }
+
 func GetService(ctx context.Context) *accountService {
 	if accountServiceInstance == nil {
 		log.Fatal("[service] Account service is not initialized")
@@ -96,7 +100,8 @@ func (service *accountService) GetById(ctx context.Context, id uint) (*models.Ac
 }
 
 func (service *accountService) GetByUserId(ctx context.Context,
-	userId uint) (*[]models.Account, *utils.ServiceError) {
+	userId uint,
+) (*[]models.Account, *utils.ServiceError) {
 	traceID := utils.TraceIDFromContext(ctx)
 	log.Info("[service]Get Account By User ID",
 		zap.Uint("userId", userId),
@@ -298,7 +303,7 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 		return utils.NewServiceError(http.StatusUnauthorized, "User has no Permission", nil)
 	}
 
-	result := service.DB.Delete(&models.Account{}, ID)
+	result := service.DB.Unscoped().Delete(&models.Account{}, ID)
 	if result.Error != nil {
 		log.Info("[service]Delete Account failed",
 			zap.String("traceID", traceID),
