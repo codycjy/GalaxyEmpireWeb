@@ -1,5 +1,6 @@
 'use client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUser } from '@/components/providers/user-provider';
 import {
   Collapsible,
   CollapsibleContent,
@@ -44,14 +45,21 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import { Icons } from '../icons';
+import { useState, useEffect } from 'react';
 
 
 
 export default function AppSidebar() {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // 使用用户上下文中的信息
   const company = {
-    name: session?.user?.name || 'User Name',
+    name: mounted ? (user?.username || 'Guest User') : 'Guest User',
     logo: GalleryVerticalEnd,
     plan: 'GalaxyEmpire'
   };
@@ -59,12 +67,14 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex gap-2 py-2 text-sidebar-accent-foreground ">
+        <div className="flex gap-2 py-2 text-sidebar-accent-foreground">
           <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
             <company.logo className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">{company.name}</span>
+            <span className="truncate font-semibold">
+              {mounted ? (user?.username || 'Guest User') : 'Guest User'}
+            </span>
             <span className="truncate text-xs">{company.plan}</span>
           </div>
         </div>
@@ -140,20 +150,20 @@ export default function AppSidebar() {
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage
-                      src={session?.user?.image || ''}
-                      alt={session?.user?.name || ''}
+                      src={user?.image || ''}
+                      alt={user?.username || ''}
                     />
                     <AvatarFallback className="rounded-lg">
-                      {session?.user?.name?.slice(0, 2)?.toUpperCase() || 'CN'}
+                    {user?.username?.slice(0, 2)?.toUpperCase() || 'GU'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
-                      {session?.user?.name || ''}
+                    {user?.username || 'Guest User'}
                     </span>
-                    <span className="truncate text-xs">
-                      {session?.user?.email || ''}
-                    </span>
+                    {/* <span className="truncate text-xs">
+                    {user?.email || 'Please login'}
+                    </span> */}
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -168,22 +178,21 @@ export default function AppSidebar() {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={session?.user?.image || ''}
-                        alt={session?.user?.name || ''}
+                        src={user?.image || ''}
+                        alt={user?.username || ''}
                       />
                       <AvatarFallback className="rounded-lg">
-                        {session?.user?.name?.slice(0, 2)?.toUpperCase() ||
-                          'CN'}
+                      {user?.username?.slice(0, 2)?.toUpperCase() || 'GU'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">
-                        {session?.user?.name || ''}
+                      {user?.username || 'Guest User'}
                       </span>
-                      <span className="truncate text-xs">
+                      {/* <span className="truncate text-xs">
                         {' '}
-                        {session?.user?.email || ''}
-                      </span>
+                        {user?.email || 'Please login'}
+                      </span> */}
                     </div>
                   </div>
                 </DropdownMenuLabel>

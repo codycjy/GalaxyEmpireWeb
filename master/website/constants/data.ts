@@ -91,7 +91,7 @@ export const users: User[] = [
   }
 ];
 
-export type Employee = {
+export type Accounts = {
   id: number;
   first_name: string;
   last_name: string;
@@ -131,10 +131,10 @@ export const navItems: NavItem[] = [
     items: [] // Empty array as there are no child items for Dashboard
   },
   {
-    title: 'Employee',
-    url: '/dashboard/employee',
+    title: 'Accounts',
+    url: '/dashboard/accounts',
     icon: 'user',
-    shortcut: ['e', 'e'],
+    shortcut: ['a', 'a'],
     isActive: false,
     items: [] // No child items
   },
@@ -147,7 +147,7 @@ export const navItems: NavItem[] = [
     items: [] // No child items
   },
   {
-    title: 'Account',
+    title: 'User',
     url: '#', // Placeholder as there is no direct link for the parent
     icon: 'billing',
     isActive: true,
@@ -166,13 +166,5 @@ export const navItems: NavItem[] = [
         icon: 'login'
       }
     ]
-  },
-  {
-    title: 'Kanban',
-    url: '/dashboard/kanban',
-    icon: 'kanban',
-    shortcut: ['k', 'k'],
-    isActive: false,
-    items: [] // No child items
   }
 ];

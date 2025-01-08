@@ -4,7 +4,6 @@
 
 
 ## 项目结构
-'''
 website/
 ├── app/ # Next.js 应用主目录
 │ ├── api/ # API 路由
@@ -16,7 +15,6 @@ website/
 ├── lib/ # 工具函数和服务
 ├── public/ # 静态资源
 └── styles/ # 全局样式
-'''
 
 ## 环境变量配置
 

@@ -9,7 +9,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/components/providers/user-provider';
 
 const API_BASE_URL = "/api/v1";  // 改回使用相对路径
 
@@ -29,7 +28,6 @@ interface CaptchaData {
 export default function UserAuthForm() {
   const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
   const router = useRouter();
-  const { setUser } = useUser();
   
   const getCaptcha = async () => {
     try {
@@ -121,19 +119,8 @@ export default function UserAuthForm() {
       if (result.token) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
-        const userData = {
-          id: result.user.id,
-          username: result.user.username,
-          // 如果这些字段后端没有返回，则使用默认值
-          email: '',  // 后端没有返回 email
-          image: '',  // 后端没有返回 image
-          role: 'user',  // 默认角色
-          balance: result.user.balance
-        };
-        setUser(userData);
-        console.log('User data set:', userData);
         toast.success('Login successful!');
-        router.push('/dashboard/accounts');
+        router.push('/dashboard');
       } else {
         console.log('No token in successful response');
         toast.error('Login failed: Invalid response format');
@@ -191,12 +178,12 @@ export default function UserAuthForm() {
                 <FormControl>
                   <Input placeholder="Enter captcha..." {...field} />
                 </FormControl>
-                <div className="relative h-10 w-24 bg-white rounded-md overflow-hidden">
+                <div className="relative h-10 w-24">
                   {captcha?.captchaImg && (
                     <img
                       src={`${captcha.captchaImg}`}
                       alt="captcha"
-                      className="h-full w-full cursor-pointer object-contain bg-white"
+                      className="h-full w-full cursor-pointer object-contain"
                       onClick={() => getCaptcha()}
                     />
                   )}
