@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { redirect } from 'next/navigation'; 
 import { useUser } from '@/components/providers/user-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,14 +86,7 @@ export default function AccountListingPage() {
         clearInterval(checkInterval);
       }
     };
-  }, []);
-
-  // 获取账号列表
-  useEffect(() => {
-    if (mounted && user?.id) {
-      fetchAccounts();
-    }
-  }, [mounted, user?.id]);
+  }, [checkInterval]);
 
   // 清理所有状态和请求的函数
   const cleanupCheckStatus = useCallback(() => {
@@ -242,7 +234,6 @@ export default function AccountListingPage() {
         toast.error('验证请求失败');
       }
     } catch (error) {
-      console.error('Account check error:', error);
       toast.error('验证失败');
     }finally {
       setIsCreating(false);
@@ -313,7 +304,7 @@ export default function AccountListingPage() {
   
   
     // 3. 获取账号列表
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const token = checkAuth();
       if (!token) return;
@@ -339,14 +330,14 @@ export default function AccountListingPage() {
       console.error('Fetch accounts error:', error);
       toast.error('获取账号列表失败');
     }
-  };
-  
+  },[user?.id]);
+
     // 4. 只在组件挂载且有用户 ID 时获取数据
     useEffect(() => {
       if (mounted && user?.id) {
         fetchAccounts();
       }
-    }, [mounted, user?.id]);
+    }, [mounted, user?.id, fetchAccounts]);
   
     // 如果组件未挂载，返回加载状态
     if (!mounted) {
@@ -572,7 +563,7 @@ return (
                         <DialogTitle>确认删除</DialogTitle>
                       </DialogHeader>
                       <div className="py-4">
-                        <p>确定要删除账号 "{account.username}" 吗？此操作无法撤销。</p>
+                        <p>确定要删除账号 &quot;{account.username}&quot; 吗？此操作无法撤销。</p>
                       </div>
                       <div className="flex justify-end gap-4">
                         <DialogClose asChild>
