@@ -1,4 +1,4 @@
-import { searchParamsCache } from '@/lib/searchparams';
+// import { searchParamsCache } from '@/lib/searchparams';
 import { SearchParams } from 'nuqs/parsers';
 import React from 'react';
 import AccountListingPage from './_components/account-listing-page';
@@ -12,8 +12,8 @@ export const metadata = {
 };
 
 export default async function Page({ searchParams }: pageProps) {
-  // Allow nested RSCs to access the search params (in a type-safe way)
-  searchParamsCache.parse(searchParams);
+  // TODO: Allow nested RSCs to access the search params (in a type-safe way)
+  // searchParamsCache.parse(searchParams);
 
   return <AccountListingPage />;
 }
