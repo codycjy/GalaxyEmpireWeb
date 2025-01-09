@@ -524,10 +524,9 @@ return (
             </Button>
             <Button
               onClick={() =>{
-                handleCreateAccount;
+                handleCreateAccount();
                 setIsAddDialogOpen(false);
                 resetForm();
-                toast.dismiss('checking-status');
               }}
               disabled={!isVerified || isCreating}
               className={`${isVerified ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300'}`}
