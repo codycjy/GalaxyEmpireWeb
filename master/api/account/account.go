@@ -10,7 +10,6 @@ import (
 	"GalaxyEmpireWeb/utils"
 	"errors"
 	"net/http"
-	"net/mail"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -71,7 +70,6 @@ func GetAccountByID(c *gin.Context) {
 		Data:    account.ToDTO(),
 		TraceID: traceID,
 	})
-
 }
 
 // GetAccountByUserID godoc
@@ -216,7 +214,6 @@ func CreateAccount(c *gin.Context) {
 		Data:    accoutDTO,
 		TraceID: traceID,
 	})
-
 }
 
 // DeleteAccount godoc
@@ -265,7 +262,6 @@ func DeleteAccount(c *gin.Context) {
 		Succeed: true,
 		TraceID: traceID,
 	})
-
 }
 
 type accountCheckingResponse struct {
@@ -302,6 +298,15 @@ func CheckAccountAvailable(c *gin.Context) {
 			TraceID: traceID,
 		})
 		return
+	}
+	if serviceErr := verifyAccount(c, &account); serviceErr != nil {
+		log.Error("[api]Check Account Available failed, Invalid Account",
+			zap.String("traceID", traceID))
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Message: "Username, Password, Server are required",
+			TraceID: traceID,
+		})
 	}
 	uuid, serviceErr := accountservice.GetService(c).RequestCheckingAccountLogin(c, &account)
 	if serviceErr != nil {
@@ -344,8 +349,8 @@ func CheckAccountByUUID(c *gin.Context) {
 		TraceID: traceID,
 		UUID:    uuid,
 	})
-
 }
+
 func verifyAccount(c *gin.Context, account *models.Account) *utils.ApiError {
 	traceID := c.GetString("traceID")
 	log.Info("[api]Verify Account",
@@ -354,19 +359,15 @@ func verifyAccount(c *gin.Context, account *models.Account) *utils.ApiError {
 		zap.String("email", account.Email),
 	)
 	if account.Username == "" {
-		return utils.NewApiError(http.StatusBadRequest, "Username is required", errors.New("Username is required"))
+		return utils.NewApiError(http.StatusBadRequest, "Username is required", errors.New("username is required"))
 	}
 	if account.Password == "" {
-		return utils.NewApiError(http.StatusBadRequest, "Password is required", errors.New("Password is required"))
+		return utils.NewApiError(http.StatusBadRequest, "Password is required", errors.New("password is required"))
 	}
-	if account.Email == "" {
-		return utils.NewApiError(http.StatusBadRequest, "Email is required", errors.New("Email is required"))
+	if account.Server == "" {
+		return utils.NewApiError(http.StatusBadRequest, "Server is required", errors.New("server is required"))
 	}
 
-	_, err := mail.ParseAddress(account.Email)
-	if err != nil {
-		return utils.NewApiError(http.StatusBadRequest, "Invalid Email", err)
-	}
 	log.Info("[api]Verify Account - Succeed", zap.String("traceID", traceID))
 
 	return nil
