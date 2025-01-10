@@ -27,7 +27,6 @@ import { toast } from 'sonner';
 interface GameAccount {
   id: number;
   username: string;
-  email: string;
   server: string;
   ExpireAt: string;
   tasks: any[]; // 可以根据实际 tasks 的结构定义更具体的类型
@@ -55,7 +54,6 @@ interface CreateAccountForm {
   username: string;
   password: string;
   server: string;
-  email: string;
 }
 
 export default function AccountListingPage() {
@@ -72,7 +70,6 @@ export default function AccountListingPage() {
     username: '',
     password: '',
     server: '',
-    email: '',
   });
 
 
@@ -120,7 +117,6 @@ export default function AccountListingPage() {
       username: '',
       password: '',
       server: '',
-      email: '',
     });
   }, [checkInterval]);
 
@@ -131,7 +127,7 @@ export default function AccountListingPage() {
       clearInterval(checkInterval);
     }
     let attempts = 0;
-    const maxAttempts = 10; // 最大轮询次数
+    const maxAttempts = 3; // 最大轮询次数
 
     const interval = setInterval(async () => {
       try {
@@ -163,6 +159,7 @@ export default function AccountListingPage() {
           setCheckInterval(null);
           setIsChecking(false);
           toast.error('验证超时，请重试');
+          
         } else {
           // 添加验证中的提示
           toast.info('正在验证账号...', {
@@ -176,7 +173,7 @@ export default function AccountListingPage() {
         clearInterval(interval);
         setCheckInterval(null);
       }
-    }, 300);
+    }, 100);
 
     setCheckInterval(interval);
   }, [checkInterval]);
@@ -199,11 +196,13 @@ export default function AccountListingPage() {
       
       if (!token) {
         toast.error('未登录或登录已过期');
+        setIsChecking(false);
         return;
       }
 
       if (!newAccount.username || !newAccount.password || !newAccount.server) {
         toast.error('请填写账号、密码和服务器');
+        setIsChecking(false);
         return;
       }
 
@@ -277,7 +276,6 @@ export default function AccountListingPage() {
           username: '',
           password: '',
           server: '',
-          email: '',
         });
         fetchAccounts(); // 刷新账号列表
       } else {
@@ -331,6 +329,13 @@ export default function AccountListingPage() {
       toast.error('获取账号列表失败');
     }
   },[user?.id]);
+
+  // 检查过期的函数
+  const checkExpired = (expireAt: string) => {
+    const expireDate = new Date(expireAt);
+    const now = new Date();
+    return expireDate < now;
+  };
 
     // 4. 只在组件挂载且有用户 ID 时获取数据
     useEffect(() => {
@@ -411,10 +416,6 @@ return (
         }}>
           <DialogHeader>
             <DialogTitle>添加新账号</DialogTitle>
-                {/* 开发时可以添加这行来查看状态 */}
-            <div className="text-sm text-gray-500">
-              验证状态: {isVerified ? '已验证' : '未验证'}
-            </div>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -456,21 +457,6 @@ return (
                 }))}
                 placeholder="请输入服务器"
                 disabled={isChecking || isVerified}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">邮箱</Label>
-              <Input
-                id="email"
-                type="email"
-                value={newAccount.email}
-                onChange={(e) => setNewAccount(prev => ({
-                  ...prev,
-                  email: e.target.value
-                }))}
-                placeholder="请输入邮箱"
-                // 邮箱可以在验证后填写
-                disabled={isChecking}
               />
             </div>
           </div>
@@ -538,20 +524,31 @@ return (
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[200px]">账号</TableHead>
-            <TableHead className="w-[200px]">服务器</TableHead>
-            <TableHead className="w-[200px]">邮箱</TableHead>
-            <TableHead className="w-[100px] text-right">操作</TableHead>
+            <TableHead className="text-center">账号</TableHead>
+            <TableHead className="text-center">服务器</TableHead>
+            <TableHead className="text-center">状态</TableHead>
+            <TableHead className="text-center">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {accounts.length > 0 ? (
             accounts.map((account) => (
               <TableRow key={account.id}>
-                <TableCell className="font-medium">{account.username}</TableCell>
-                <TableCell>{account.server}</TableCell>
-                <TableCell>{account.email}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-center">{account.username}</TableCell>
+                <TableCell className="text-center">{account.server}</TableCell>
+                <TableCell className="text-center">
+                  <div className="flex justify-center items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-sm ${
+                      checkExpired(account.ExpireAt) 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {checkExpired(account.ExpireAt) ? '已过期' : '生效中'} 
+                      ({new Date(account.ExpireAt).toLocaleDateString('zh-CN')})
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
@@ -585,7 +582,7 @@ return (
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-4">
+              <TableCell colSpan={4} className="text-center py-4">
                 暂无账号数据
               </TableCell>
             </TableRow>
