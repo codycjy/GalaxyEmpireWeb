@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (*models.Task, error) {
@@ -32,119 +33,24 @@ func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (
 			zap.String("uuid", response.UUID))
 		return nil, err
 	}
-	// Handle login task
-	if response.TaskType == models.TASKTYPE_LOGIN {
-		succeed := response.Status == models.TASK_RESULT_SUCCESS
-		if err := tx.Model(&models.TaskLog{}).
-			Where("uuid = ?", response.UUID).
-			Update("status", succeed).Error; err != nil {
-			tx.Rollback()
-			log.Error("[TaskService::HandleSingleResult] failed to update login task log",
-				zap.String("uuid", response.UUID),
-				zap.Error(err))
-			return nil, fmt.Errorf("failed to update login task log: %w", err)
-		}
-		return nil, tx.Commit().Error
-	}
-	if response.TaskType == models.TASKTYPE_QUERY_PLANET_ID {
-		// Handle query planet ID task
-		succeed := response.Status == models.TASK_RESULT_SUCCESS
-		if err := tx.Model(&models.TaskLog{}).
-			Where("uuid = ?", response.UUID).
-			Update("status", succeed).
-			Update("msg", response.Msg).
-			Update("err_msg", response.ErrMsg).Error; err != nil {
-			tx.Rollback()
-			log.Error("[TaskService::HandleSingleResult] failed to update query planet ID task log",
-				zap.String("uuid", response.UUID),
-				zap.Error(err))
-			return nil, fmt.Errorf("failed to update query planet ID task log: %w", err)
-		}
-		if err := tx.Commit().Error; err != nil {
-			tx.Rollback()
-			log.Error("[TaskService::HandleSingleResult] failed to commit transaction",
-				zap.String("uuid", response.UUID),
-				zap.Error(err))
-			return nil, fmt.Errorf("failed to commit transaction: %w", err)
+
+	var err error
+	switch response.TaskType {
+	case models.TASKTYPE_LOGIN:
+		err = ts.handleLoginTask(tx, response)
+	case models.TASKTYPE_QUERY_PLANET_ID:
+		err = ts.handleQueryPlanetIDTask(tx, response)
+	default:
+		if response.Status != models.TASK_RESULT_SUCCESS {
+			err = ts.handleFailedTask(tx, response, &task)
+		} else {
+			err = ts.handleSuccessfulTask(tx, response, &task)
 		}
 	}
 
-	// Remaining tasks Attack and Explore
-	if response.Status != models.TASK_RESULT_SUCCESS {
-		// Update task log to failed status
-		if err := tx.Model(&models.TaskLog{}).
-			Where("uuid = ?", response.UUID).
-			Update("status", models.TASK_RESULT_FAILED).Error; err != nil {
-			tx.Rollback()
-			log.Error("[TaskService::HandleSingleResult] failed to update failed task log",
-				zap.String("uuid", response.UUID),
-				zap.Uint("task_id", task.ID),
-				zap.Error(err))
-			return nil, err
-		}
-
-		// 即使任务失败也要更新任务状态和下次执行时间
-		if err := tx.Model(&task).Updates(map[string]interface{}{
-			"status":     models.TaskStatusMap[models.TASK_STATUS_READY],
-			"next_start": time.Now().Unix() + config.FAILED_TASK_DELAY,
-		}).Error; err != nil {
-			tx.Rollback()
-			log.Error("[TaskService::HandleSingleResult] failed to update task status",
-				zap.String("uuid", response.UUID),
-				zap.Uint("task_id", task.ID),
-				zap.Error(err))
-			return nil, err
-		}
-
-		// 提交事务
-		if err := tx.Commit().Error; err != nil {
-			log.Error("[TaskService::HandleSingleResult] failed to commit transaction",
-				zap.String("uuid", response.UUID),
-				zap.Uint("task_id", task.ID),
-				zap.Error(err))
-			return nil, err
-		}
-
-		log.Warn("[TaskService::HandleSingleResult] task execution failed but status updated",
-			zap.String("uuid", response.UUID),
-			zap.Uint("task_id", task.ID),
-			zap.Int("status", response.Status))
-
-		return &task, nil // 返回更新后的任务，而不是错误
-	}
-
-	// Handle other tasks
-	log.Info("[TaskService::HandleSingleResult] task succeeded",
-		zap.String("uuid", response.UUID),
-		zap.Uint("task_id", task.ID),
-		zap.Int("task_type", response.TaskType))
-
-	// Update task status
-	task.Status = models.TaskStatusMap[models.TASK_STATUS_READY]
-	task.NextStart = response.BackTimestamp + config.TASK_DELAY
-
-	if err := tx.Model(&task).Updates(map[string]interface{}{
-		"status":     models.TaskStatusMap[models.TASK_STATUS_READY],
-		"next_start": response.BackTimestamp + config.TASK_DELAY,
-	}).Error; err != nil {
+	if err != nil {
 		tx.Rollback()
-		log.Error("[TaskService::HandleSingleResult] failed to update task",
-			zap.String("uuid", response.UUID),
-			zap.Uint("task_id", task.ID),
-			zap.Error(err))
-		return nil, fmt.Errorf("failed to update task: %w", err)
-	}
-
-	// Update task log
-	if err := tx.Model(&models.TaskLog{}).
-		Where("uuid = ?", response.UUID).
-		Update("status", models.TASK_RESULT_SUCCESS).Error; err != nil {
-		tx.Rollback()
-		log.Error("[TaskService::HandleSingleResult] failed to update success task log",
-			zap.String("uuid", response.UUID),
-			zap.Uint("task_id", task.ID),
-			zap.Error(err))
-		return nil, fmt.Errorf("failed to update task log: %w", err)
+		return nil, err
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -157,6 +63,63 @@ func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (
 
 	return &task, nil
 }
+
+func (ts *taskService) handleLoginTask(tx *gorm.DB, response *models.SingleTaskResponse) error {
+	succeed := response.Status == models.TASK_RESULT_SUCCESS
+	if err := tx.Model(&models.TaskLog{}).
+		Where("uuid = ?", response.UUID).
+		Update("status", succeed).Error; err != nil {
+		return fmt.Errorf("failed to update login task log: %w", err)
+	}
+	return nil
+}
+
+func (ts *taskService) handleQueryPlanetIDTask(tx *gorm.DB, response *models.SingleTaskResponse) error {
+	succeed := response.Status == models.TASK_RESULT_SUCCESS
+	if err := tx.Model(&models.TaskLog{}).
+		Where("uuid = ?", response.UUID).
+		Update("status", succeed).
+		Update("msg", response.Msg).
+		Update("err_msg", response.ErrMsg).Error; err != nil {
+		return fmt.Errorf("failed to update query planet ID task log: %w", err)
+	}
+	return nil
+}
+
+func (ts *taskService) handleFailedTask(tx *gorm.DB, response *models.SingleTaskResponse, task *models.Task) error {
+	if err := tx.Model(&models.TaskLog{}).
+		Where("uuid = ?", response.UUID).
+		Update("status", models.TASK_RESULT_FAILED).Error; err != nil {
+		return fmt.Errorf("failed to update failed task log: %w", err)
+	}
+
+	if err := tx.Model(&task).Where("id = ?", task.ID).Updates(map[string]interface{}{
+		"status":     models.TaskStatusMap[models.TASK_STATUS_READY],
+		"next_start": time.Now().Unix() + config.FAILED_TASK_DELAY,
+	}).Error; err != nil {
+		return fmt.Errorf("failed to update task status: %w", err)
+	}
+
+	return nil
+}
+
+func (ts *taskService) handleSuccessfulTask(tx *gorm.DB, response *models.SingleTaskResponse, task *models.Task) error {
+	if err := tx.Model(&task).Where("id = ?", task.ID).Updates(map[string]interface{}{
+		"status":     models.TaskStatusMap[models.TASK_STATUS_READY],
+		"next_start": response.BackTimestamp + config.TASK_DELAY,
+	}).Error; err != nil {
+		return fmt.Errorf("failed to update task: %w", err)
+	}
+
+	if err := tx.Model(&models.TaskLog{}).
+		Where("uuid = ?", response.UUID).
+		Update("status", models.TASK_RESULT_SUCCESS).Error; err != nil {
+		return fmt.Errorf("failed to update success task log: %w", err)
+	}
+
+	return nil
+}
+
 func (ts *taskService) ListenFromResultQueue(queueName string) {
 	const reconnectDelay = 5 * time.Second
 

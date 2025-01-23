@@ -3,6 +3,7 @@ package taskservice
 import (
 	"GalaxyEmpireWeb/config"
 	"GalaxyEmpireWeb/models"
+	"GalaxyEmpireWeb/services/accountservice"
 	"GalaxyEmpireWeb/utils"
 	"context"
 	"encoding/json"
@@ -90,6 +91,12 @@ func (ts *taskService) QueryPlanetID(ctx context.Context, target *models.Target,
 		UUID:   uuid,
 		Status: models.TASK_STATUS_READY,
 	}
+	account, err := accountservice.GetService().GetById(ctx, account.ID)
+	if err != nil {
+		log.Error("[TaskService::QueryPlanetID] failed to get account", zap.Error(err))
+		return "", utils.NewServiceError(http.StatusInternalServerError, "Get Account Error", err)
+	}
+
 	if err1 := tx.Create(&taskLog).Error; err1 != nil {
 		log.Error("[TaskService::QueryPlanetID] failed to create task log", zap.Error(err1))
 		return "", utils.NewServiceError(http.StatusInternalServerError, "Create Task Log Error", err1)
