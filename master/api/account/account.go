@@ -7,6 +7,7 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/accountservice"
+	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/utils"
 	"errors"
 	"net/http"
@@ -55,7 +56,7 @@ func GetAccountByID(c *gin.Context) {
 		return
 	}
 
-	account, serviceErr := accountservice.GetService(c).GetById(c, uint(id))
+	account, serviceErr := accountservice.GetService().GetById(c, uint(id))
 	if serviceErr != nil {
 		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
 			Succeed: false,
@@ -122,7 +123,7 @@ func GetAccountByUserID(c *gin.Context) {
 		}
 	}
 
-	account, serviceErr := accountservice.GetService(c).GetByUserId(c, uint(id))
+	account, serviceErr := accountservice.GetService().GetByUserId(c, uint(id))
 
 	if serviceErr != nil {
 		c.JSON(serviceErr.StatusCode(), api.ErrorResponse{
@@ -193,7 +194,7 @@ func CreateAccount(c *gin.Context) {
 		return
 	}
 
-	serviceErr := accountservice.GetService(c).Create(c, &account)
+	serviceErr := accountservice.GetService().Create(c, &account)
 	if serviceErr != nil {
 		log.Error("[api]Create Account failed",
 			zap.String("traceID", traceID),
@@ -243,7 +244,7 @@ func DeleteAccount(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	serviceErr := accountservice.GetService(c).Delete(c, account.ID)
+	serviceErr := accountservice.GetService().Delete(c, account.ID)
 	if serviceErr != nil {
 		log.Error("[api]Delete Account failed",
 			zap.String("traceID", traceID),
@@ -308,7 +309,7 @@ func CheckAccountAvailable(c *gin.Context) {
 			TraceID: traceID,
 		})
 	}
-	uuid, serviceErr := accountservice.GetService(c).RequestCheckingAccountLogin(c, &account)
+	uuid, serviceErr := taskservice.GetService().CheckAccountLogin(c, &account)
 	if serviceErr != nil {
 		log.Error("[api]Check Account Available failed",
 			zap.String("traceID", traceID),
@@ -343,7 +344,7 @@ func CheckAccountAvailable(c *gin.Context) {
 func CheckAccountByUUID(c *gin.Context) {
 	traceID := utils.TraceIDFromContext(c)
 	uuid := c.Param("uuid")
-	result := accountservice.GetService(c).GetLoginInfo(c, uuid)
+	result := taskservice.GetService().GetLoginInfo(c, uuid)
 	c.JSON(http.StatusOK, accountCheckingResponse{
 		Succeed: result,
 		TraceID: traceID,

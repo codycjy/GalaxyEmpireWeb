@@ -57,7 +57,7 @@ func QueryPlanetID(c *gin.Context) {
 	target := &req.Target
 	account := &req.Account
 	// TODO: validate target and account
-	uuid, err := taskservice.GetService().QueryPlanetID(c.Request.Context(), target, account)
+	uuid, err := taskservice.GetService().QueryPlanetID(c, target, account)
 	if err != nil {
 		log.Error("[API::QueryPlanetID] failed to query planet ID", zap.Error(err))
 		c.JSON(err.StatusCode(), api.ErrorResponse{

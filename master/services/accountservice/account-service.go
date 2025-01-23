@@ -5,7 +5,6 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/models"
 	"GalaxyEmpireWeb/services/casbinservice"
-	"GalaxyEmpireWeb/services/taskservice"
 	"GalaxyEmpireWeb/utils"
 	"context"
 	"errors"
@@ -55,7 +54,7 @@ func InitService(db *gorm.DB, enforcer casbinservice.Enforcer) error {
 	return nil
 }
 
-func GetService(ctx context.Context) *accountService {
+func GetService() *accountService {
 	if accountServiceInstance == nil {
 		log.Fatal("[service] Account service is not initialized")
 	}
@@ -331,31 +330,8 @@ func (service *accountService) Delete(ctx context.Context, ID uint) *utils.Servi
 	return nil
 }
 
-func (service *accountService) RequestCheckingAccountLogin(ctx context.Context, account *models.Account) (string, *utils.ServiceError) {
-	traceID := utils.TraceIDFromContext(ctx)
-	log.Info("[service]Check Account Available",
-		zap.String("traceID", traceID),
-		zap.String("username", account.Username),
-	)
-	taskservice := taskservice.GetService()
-	uuid, err := taskservice.CheckAccountLogin(ctx, account)
-	if err != nil {
-		log.Error("[service]Check Account Available failed",
-			zap.String("traceID", traceID),
-			zap.Error(err),
-		)
-		return "", err
-	}
-	return uuid, nil
-}
-
-func (serveice *accountService) GetLoginInfo(ctx context.Context, uuid string) bool {
-	traceID := utils.TraceIDFromContext(ctx)
-	log.Info("[service]Get Login Info",
-		zap.String("traceID", traceID),
-		zap.String("uuid", uuid),
-	)
-	return taskservice.GetService().GetLoginInfo(ctx, uuid)
+func (service *accountService) IsAccountAllowed(ctx context.Context, accountID uint, rw int) (bool, *utils.ServiceError) {
+	return service.isUserAllowed(ctx, accountID, rw)
 }
 
 // ________________________________
