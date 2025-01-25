@@ -145,6 +145,10 @@ func (ts *taskService) GetPlanetID(ctx context.Context, uuid string) (int, *util
 
 	data := taskLog.Msg
 	var mapData map[string]string
+	if len(data) == 0 {
+		log.Error("[TaskService::GetPlanetID] empty data", zap.String("uuid", uuid))
+		return 0, utils.NewServiceError(http.StatusNotFound, "Empty Data", nil)
+	}
 	if err := json.Unmarshal([]byte(data), &mapData); err != nil {
 		log.Error("[TaskService::GetPlanetID] failed to unmarshal data", zap.Error(err))
 		return 0, utils.NewServiceError(http.StatusInternalServerError, "Unmarshal Data Error", err)
