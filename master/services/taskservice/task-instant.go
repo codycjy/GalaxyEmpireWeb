@@ -136,7 +136,7 @@ func (ts *taskService) GetPlanetID(ctx context.Context, uuid string) (int, *util
 	// Check task status first
 	if taskLog.Status == models.TASK_RESULT_FAILED {
 		log.Warn("[TaskService::GetPlanetID] query failed", zap.String("uuid", uuid))
-		return 0, utils.NewServiceError(http.StatusInternalServerError, "Query Planet ID Failed", nil)
+		return 0, utils.NewServiceError(http.StatusOK, "Query Planet ID Failed", nil)
 	}
 
 	if taskLog.Status != models.TASK_RESULT_SUCCESS { // Maybe not appeared
