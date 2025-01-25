@@ -95,7 +95,7 @@ func GetPlanetID(c *gin.Context) {
 		return
 	}
 
-	planetID, err := taskservice.GetService().GetPlanetID(c.Request.Context(), uuid)
+	planetID, err := taskservice.GetService().GetPlanetID(c, uuid)
 	if err != nil {
 		log.Error("[API::GetPlanetID] failed to get planet ID", zap.Error(err))
 		c.JSON(err.StatusCode(), api.ErrorResponse{
