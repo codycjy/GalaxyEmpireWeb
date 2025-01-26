@@ -266,9 +266,10 @@ func DeleteAccount(c *gin.Context) {
 }
 
 type accountCheckingResponse struct {
-	Succeed bool   `json:"succeed"`
-	TraceID string `json:"traceID"`
-	UUID    string `json:"uuid"`
+	Succeed    bool   `json:"succeed"`
+	TraceID    string `json:"traceID"`
+	UUID       string `json:"uuid"`
+	Processing bool   `json:"processing"`
 }
 
 // CheckAccountAvailable godoc
@@ -344,11 +345,23 @@ func CheckAccountAvailable(c *gin.Context) {
 func CheckAccountByUUID(c *gin.Context) {
 	traceID := utils.TraceIDFromContext(c)
 	uuid := c.Param("uuid")
-	result := taskservice.GetService().GetLoginInfo(c, uuid)
+
+	status, err := taskservice.GetService().GetLoginInfo(c, uuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Failed to get task status",
+			TraceID: traceID,
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, accountCheckingResponse{
-		Succeed: result,
-		TraceID: traceID,
-		UUID:    uuid,
+		Succeed:    status.Succeed,
+		TraceID:    traceID,
+		UUID:       uuid,
+		Processing: status.Processing,
 	})
 }
 
