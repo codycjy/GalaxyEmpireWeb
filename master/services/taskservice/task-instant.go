@@ -7,6 +7,7 @@ import (
 	"GalaxyEmpireWeb/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,7 +23,7 @@ func (ts *taskService) CheckAccountLogin(ctx context.Context, account *models.Ac
 	taskLog := models.TaskLog{
 		TaskID: 0, // Not in DB
 		UUID:   uuid,
-		Status: models.TASK_STATUS_READY,
+		Status: models.TASK_RESULT_RUNNING,
 	}
 	if err1 := tx.Create(&taskLog).Error; err1 != nil {
 		log.Error("[TaskService::CheckAccouuntLogin] failed to create task log", zap.Error(err1))
@@ -46,7 +47,11 @@ func (ts *taskService) CheckAccountLogin(ctx context.Context, account *models.Ac
 		tx.Rollback()
 		return "", utils.NewServiceError(http.StatusInternalServerError, "Publish Task Error", err3)
 	}
-	tx.Commit()
+	if tx.Commit().Error != nil {
+		log.Error("[TaskService::CheckAccouuntLogin] failed to commit transaction", zap.Error(tx.Commit().Error))
+		tx.Rollback()
+		return "", utils.NewServiceError(http.StatusInternalServerError, "Commit Transaction Error", tx.Commit().Error)
+	}
 	log.Info("[TaskService::CheckAccouuntLogin] task published", zap.String("uuid", uuid), zap.String("routingKey", routingKey))
 
 	// Wait for the task to be done
@@ -55,30 +60,35 @@ func (ts *taskService) CheckAccountLogin(ctx context.Context, account *models.Ac
 	return uuid, nil
 }
 
-func (ts *taskService) GetLoginInfo(ctx context.Context, uuid string) bool {
+type TaskStatus struct {
+	Succeed    bool
+	Processing bool
+}
+
+func (ts *taskService) GetLoginInfo(ctx context.Context, uuid string) (*TaskStatus, error) {
 	var taskLog models.TaskLog
-	// try to get the task log until succeed at most 3 times
-	for i := 0; i < 3; i++ {
-		if err := ts.DB.Where("uuid = ?", uuid).First(&taskLog).Error; err != nil {
-			log.Error("[TaskService::GetLoginInfo] failed to get task log", zap.Error(err))
-			time.Sleep(1 * time.Second)
-			continue
-
-		}
-		if taskLog.Status == models.TASK_RESULT_FAILED {
-			log.Warn("[TaskService::GetLoginInfo] login failed", zap.String("uuid", uuid))
-			return false
-		}
-		if taskLog.Status == models.TASK_RESULT_SUCCESS {
-			log.Info("[TaskService::GetLoginInfo] login success", zap.String("uuid", uuid))
-			return true
-		}
-
-		time.Sleep(1 * time.Second)
-
+	if err := ts.DB.Where("uuid = ?", uuid).First(&taskLog).Error; err != nil {
+		log.Error("[TaskService::GetLoginInfo] failed to get task log", zap.Error(err))
+		return nil, err
 	}
-	log.Warn("[TaskService::GetLoginInfo] login timeout", zap.String("uuid", uuid))
-	return false
+
+	status := &TaskStatus{}
+	switch taskLog.Status {
+	case models.TASK_RESULT_RUNNING:
+		status.Processing = true
+		status.Succeed = false
+	case models.TASK_RESULT_SUCCESS:
+		status.Processing = false
+		status.Succeed = true
+	case models.TASK_RESULT_FAILED:
+		status.Processing = false
+		status.Succeed = false
+	default:
+		status.Processing = true
+		status.Succeed = false
+	}
+
+	return status, nil
 }
 
 func (ts *taskService) QueryPlanetID(ctx context.Context, target *models.Target, account *models.Account) (string, *utils.ServiceError) {
@@ -88,7 +98,7 @@ func (ts *taskService) QueryPlanetID(ctx context.Context, target *models.Target,
 	taskLog := models.TaskLog{
 		TaskID: 0, // Not in DB
 		UUID:   uuid,
-		Status: models.TASK_STATUS_READY,
+		Status: models.TASK_RESULT_RUNNING,
 	}
 	account, err := accountservice.GetService().GetById(ctx, account.ID)
 	if err != nil {
@@ -125,43 +135,52 @@ func (ts *taskService) QueryPlanetID(ctx context.Context, target *models.Target,
 	return uuid, nil
 }
 
-func (ts *taskService) GetPlanetID(ctx context.Context, uuid string) (int, *utils.ServiceError) {
+func (ts *taskService) GetPlanetID(ctx context.Context, uuid string) (*TaskStatus, int, error) {
 	var taskLog models.TaskLog
 	if err := ts.DB.Where("uuid = ?", uuid).First(&taskLog).Error; err != nil {
 		log.Error("[TaskService::GetPlanetID] failed to get task log", zap.Error(err))
-		return 0, utils.NewServiceError(http.StatusInternalServerError, "Get Task Log Error", err)
+		return nil, 0, err
 	}
 
-	// Check task status first
-	if taskLog.Status == models.TASK_RESULT_FAILED {
-		log.Warn("[TaskService::GetPlanetID] query failed", zap.String("uuid", uuid))
-		return 0, utils.NewServiceError(http.StatusOK, "Query Planet ID Failed", nil)
+	status := &TaskStatus{}
+	switch taskLog.Status {
+	case models.TASK_RESULT_RUNNING:
+		status.Processing = true
+		status.Succeed = false
+		return status, 0, nil
+	case models.TASK_RESULT_SUCCESS:
+		status.Processing = false
+		status.Succeed = true
+	case models.TASK_RESULT_FAILED:
+		status.Processing = false
+		status.Succeed = false
+		return status, 0, nil
+	default:
+		status.Processing = true
+		status.Succeed = false
+		return status, 0, nil
 	}
 
-	if taskLog.Status != models.TASK_RESULT_SUCCESS { // Maybe not appeared
-		log.Warn("[TaskService::GetPlanetID] task not completed successfully", zap.String("uuid", uuid))
-		return 0, utils.NewServiceError(http.StatusOK, "Task Not Completed", nil)
-	}
-
+	// Only process data if status is SUCCESS
 	data := taskLog.Msg
 	var mapData map[string]string
 	if len(data) == 0 {
-		log.Error("[TaskService::GetPlanetID] empty data", zap.String("uuid", uuid))
-		return 0, utils.NewServiceError(http.StatusNotFound, "Empty Data", nil)
+		return status, 0, fmt.Errorf("empty data")
 	}
+
 	if err := json.Unmarshal([]byte(data), &mapData); err != nil {
-		log.Error("[TaskService::GetPlanetID] failed to unmarshal data", zap.Error(err))
-		return 0, utils.NewServiceError(http.StatusInternalServerError, "Unmarshal Data Error", err)
+		return status, 0, err
 	}
+
 	planetID, ok := mapData["planet_id"]
 	if !ok {
-		log.Error("[TaskService::GetPlanetID] planet id not found", zap.String("uuid", uuid))
-		return 0, utils.NewServiceError(http.StatusNotFound, "Planet ID Not Found", nil)
+		return status, 0, fmt.Errorf("planet id not found")
 	}
+
 	planetIDInt, err := strconv.Atoi(planetID)
 	if err != nil {
-		log.Error("[TaskService::GetPlanetID] failed to convert planet id to int", zap.Error(err))
-		return 0, utils.NewServiceError(http.StatusInternalServerError, "Convert Planet ID Error", err)
+		return status, 0, err
 	}
-	return planetIDInt, nil
+
+	return status, planetIDInt, nil
 }

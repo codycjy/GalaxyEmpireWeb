@@ -65,20 +65,30 @@ func (ts *taskService) HandleSingleResult(response *models.SingleTaskResponse) (
 }
 
 func (ts *taskService) handleLoginTask(tx *gorm.DB, response *models.SingleTaskResponse) error {
-	succeed := response.Status == models.TASK_RESULT_SUCCESS
+	var status int
+	if response.Status == models.TASK_RESULT_SUCCESS {
+		status = models.TASK_RESULT_SUCCESS
+	} else {
+		status = models.TASK_RESULT_FAILED
+	}
 	if err := tx.Model(&models.TaskLog{}).
 		Where("uuid = ?", response.UUID).
-		Update("status", succeed).Error; err != nil {
+		Update("status", status).Error; err != nil {
 		return fmt.Errorf("failed to update login task log: %w", err)
 	}
 	return nil
 }
 
 func (ts *taskService) handleQueryPlanetIDTask(tx *gorm.DB, response *models.SingleTaskResponse) error {
-	succeed := response.Status == models.TASK_RESULT_SUCCESS
+	var status int
+	if response.Status == models.TASK_RESULT_SUCCESS {
+		status = models.TASK_RESULT_SUCCESS
+	} else {
+		status = models.TASK_RESULT_FAILED
+	}
 	if err := tx.Model(&models.TaskLog{}).
 		Where("uuid = ?", response.UUID).
-		Update("status", succeed).
+		Update("status", status).
 		Update("msg", response.Msg).
 		Update("err_msg", response.ErrMsg).Error; err != nil {
 		return fmt.Errorf("failed to update query planet ID task log: %w", err)
@@ -87,9 +97,15 @@ func (ts *taskService) handleQueryPlanetIDTask(tx *gorm.DB, response *models.Sin
 }
 
 func (ts *taskService) handleFailedTask(tx *gorm.DB, response *models.SingleTaskResponse, task *models.Task) error {
+	var status int
+	if response.Status == models.TASK_RESULT_SUCCESS {
+		status = models.TASK_RESULT_SUCCESS
+	} else {
+		status = models.TASK_RESULT_FAILED
+	}
 	if err := tx.Model(&models.TaskLog{}).
 		Where("uuid = ?", response.UUID).
-		Update("status", models.TASK_RESULT_FAILED).Error; err != nil {
+		Update("status", status).Error; err != nil {
 		return fmt.Errorf("failed to update failed task log: %w", err)
 	}
 
@@ -104,6 +120,12 @@ func (ts *taskService) handleFailedTask(tx *gorm.DB, response *models.SingleTask
 }
 
 func (ts *taskService) handleSuccessfulTask(tx *gorm.DB, response *models.SingleTaskResponse, task *models.Task) error {
+	var status int
+	if response.Status == models.TASK_RESULT_SUCCESS {
+		status = models.TASK_RESULT_SUCCESS
+	} else {
+		status = models.TASK_RESULT_FAILED
+	}
 	if err := tx.Model(&task).Where("id = ?", task.ID).Updates(map[string]interface{}{
 		"status":     models.TaskStatusMap[models.TASK_STATUS_READY],
 		"next_start": response.BackTimestamp + config.TASK_DELAY,
@@ -113,7 +135,7 @@ func (ts *taskService) handleSuccessfulTask(tx *gorm.DB, response *models.Single
 
 	if err := tx.Model(&models.TaskLog{}).
 		Where("uuid = ?", response.UUID).
-		Update("status", models.TASK_RESULT_SUCCESS).Error; err != nil {
+		Update("status", status).Error; err != nil {
 		return fmt.Errorf("failed to update success task log: %w", err)
 	}
 

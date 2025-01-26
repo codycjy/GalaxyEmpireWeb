@@ -12,7 +12,7 @@ type Account struct {
 	gorm.Model
 	BaseCasbinEntity
 	Username string    `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_server"`
-	Password string    `gorm:"not null"` // MD5 hash TODO:
+	Password string    `gorm:"not null"`
 	Email    string    `gorm:"not null"`
 	Server   string    `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_server"`
 	ExpireAt time.Time `gorm:"type:datetime(3);default:CURRENT_TIMESTAMP(3)"`

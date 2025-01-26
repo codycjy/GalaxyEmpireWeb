@@ -25,9 +25,10 @@ type QueryPlanetIDResponse struct {
 
 // GetPlanetIDResponse represents the response containing the planet ID
 type GetPlanetIDResponse struct {
-	PlanetID int    `json:"planet_id"`
-	TraceID  string `json:"trace_id"`
-	Succeed  bool   `json:"succeed"`
+	PlanetID   int    `json:"planet_id"`
+	TraceID    string `json:"trace_id"`
+	Succeed    bool   `json:"succeed"`
+	Processing bool   `json:"processing"`
 }
 
 // QueryPlanetID initiates a planet ID query task
@@ -95,20 +96,24 @@ func GetPlanetID(c *gin.Context) {
 		return
 	}
 
-	planetID, err := taskservice.GetService().GetPlanetID(c, uuid)
+	status, planetID, err := taskservice.GetService().GetPlanetID(c, uuid)
 	if err != nil {
 		log.Error("[API::GetPlanetID] failed to get planet ID", zap.Error(err))
-		c.JSON(err.StatusCode(), api.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
-			Message: err.Msg(),
+			Message: "Failed to get planet ID",
 			TraceID: utils.TraceIDFromContext(c),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, GetPlanetIDResponse{PlanetID: planetID,
-		TraceID: utils.TraceIDFromContext(c), Succeed: true})
+	c.JSON(http.StatusOK, GetPlanetIDResponse{
+		PlanetID:   planetID,
+		TraceID:    utils.TraceIDFromContext(c),
+		Succeed:    status.Succeed,
+		Processing: status.Processing,
+	})
 }
 
 // RegisterPlanetRoutes registers the planet-related routes

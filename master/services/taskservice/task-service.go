@@ -74,6 +74,7 @@ func (ts *taskService) AddTask(ctx context.Context, task *models.Task) *utils.Se
 	log.Info("[TaskService] AddTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
 	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
 		log.Error("[TaskService] AddTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return utils.NewServiceError(http.StatusInternalServerError, "Commit Transaction Error", err)
 	}
@@ -146,7 +147,11 @@ func (ts *taskService) UpdateTask(ctx context.Context, task *models.Task) *utils
 	}
 	log.Info("[TaskService] UpdateTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, "Commit Transaction Error", err)
+	}
 	return nil
 }
 func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.ServiceError {
