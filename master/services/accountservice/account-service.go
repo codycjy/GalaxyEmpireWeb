@@ -84,7 +84,10 @@ func (service *accountService) GetById(ctx context.Context, id uint) (*models.Ac
 	}
 	var account models.Account
 	cur := service.DB
-	err := cur.Where("id = ?", id).First(&account).Error
+	err := cur.Where("id = ?", id).Preload("Tasks").
+		Preload("Tasks.Targets").
+		Preload("Tasks.Fleet").
+		First(&account).Error
 	if err != nil {
 		log.Error("[service]Get Account By ID failed",
 			zap.String("traceID", traceID),
@@ -93,7 +96,7 @@ func (service *accountService) GetById(ctx context.Context, id uint) (*models.Ac
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, utils.NewServiceError(http.StatusNotFound, "Account Not found", err)
 		}
-		return nil, utils.NewServiceError(http.StatusInternalServerError, "SQL Server Error", err)
+		return nil, utils.NewServiceError(http.StatusInternalServerError, "Service Error", err)
 	}
 	return &account, nil
 }
