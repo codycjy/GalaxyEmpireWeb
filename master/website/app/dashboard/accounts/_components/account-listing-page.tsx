@@ -23,10 +23,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface GameAccount {
   id: number;
   username: string;
+  password: string;
   server: string;
   ExpireAt: string;
   tasks: any[]; // 可以根据实际 tasks 的结构定义更具体的类型
@@ -71,6 +73,7 @@ export default function AccountListingPage() {
     password: '',
     server: '',
   });
+  const router = useRouter();
 
 
   // 组件挂载和卸载
@@ -127,7 +130,7 @@ export default function AccountListingPage() {
       clearInterval(checkInterval);
     }
     let attempts = 0;
-    const maxAttempts = 3; // 最大轮询次数
+    const maxAttempts = 5; // 最大轮询次数
 
     const interval = setInterval(async () => {
       try {
@@ -320,6 +323,7 @@ export default function AccountListingPage() {
       
       if (data.succeed) {
         // 直接获取 accounts 数组
+        // console.log('Account data:', data.data.accounts); // 临时添加日志查看返回数据
         setAccounts(data.data.accounts);
       } else {
         toast.error('获取账号列表失败');
@@ -385,6 +389,10 @@ export default function AccountListingPage() {
       console.error('删除账号错误:', error);
       toast.error('删除账号失败');
     }
+  };
+
+  const handleAccountClick = (accountId: number) => {
+    router.push(`/dashboard/tasks?accountId=${accountId}`);
   };
 
 // 修改表格渲染部分
@@ -534,7 +542,14 @@ return (
           {accounts.length > 0 ? (
             accounts.map((account) => (
               <TableRow key={account.id}>
-                <TableCell className="text-center">{account.username}</TableCell>
+                <TableCell className="text-center">
+                  <button
+                    onClick={() => handleAccountClick(account.id)}
+                    className="px-3 py-1 rounded-md hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  >
+                    {account.username}
+                  </button>
+                </TableCell>
                 <TableCell className="text-center">{account.server}</TableCell>
                 <TableCell className="text-center">
                   <div className="flex justify-center items-center gap-2">
