@@ -15,8 +15,10 @@ type User struct {
 	Accounts []Account `gorm:"foreignKey:UserID" json:"accounts"`
 }
 
+var UserEntityPrefix = "user_"
+
 func (user User) GetEntityPrefix() string {
-	return "user_"
+	return UserEntityPrefix
 }
 
 func (user *User) ToDTO() *UserDTO {
