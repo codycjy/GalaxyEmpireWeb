@@ -31,9 +31,9 @@ func (ps *paymentService) ExtendAccountTime(ctx context.Context, account *models
 	}
 
 	// Get extend price from config
-	extendPrice, exists := config.GetPrice(config.ExtendPrice)
-	if !exists || !extendPrice.Available {
-		log.Error("[ExtendAccountTime] Account extension price not configured or not available",
+	extendConfig, exists := config.GetConsume(config.ExtendAccount)
+	if !exists || !extendConfig.Available {
+		log.Error("[ExtendAccountTime] Account extension not configured or not available",
 			zap.String("traceID", traceID),
 		)
 		return utils.NewServiceError(http.StatusServiceUnavailable, "Account extension is not available", nil)
@@ -105,18 +105,18 @@ func (ps *paymentService) ExtendAccountTime(ctx context.Context, account *models
 	}
 
 	// Check balance
-	if user.Balance < extendPrice.Amount {
+	if user.Balance < extendConfig.Amount {
 		tx.Rollback()
 		log.Error("[ExtendAccountTime] Insufficient balance",
 			zap.String("traceID", traceID),
 			zap.Int64("balance", user.Balance),
-			zap.Int64("required", extendPrice.Amount),
+			zap.Int64("required", extendConfig.Amount),
 		)
-		return utils.NewServiceError(http.StatusBadRequest, fmt.Sprintf("Insufficient balance. Required: %d", extendPrice.Amount), nil)
+		return utils.NewServiceError(http.StatusBadRequest, fmt.Sprintf("Insufficient balance. Required: %d", extendConfig.Amount), nil)
 	}
 
 	// Update user balance
-	if err := tx.Model(&user).Update("balance", user.Balance-extendPrice.Amount).Error; err != nil {
+	if err := tx.Model(&user).Update("balance", user.Balance-extendConfig.Amount).Error; err != nil {
 		tx.Rollback()
 		log.Error("[ExtendAccountTime] Failed to update balance",
 			zap.String("traceID", traceID),
@@ -128,9 +128,9 @@ func (ps *paymentService) ExtendAccountTime(ctx context.Context, account *models
 	var newExpireTime time.Time
 	// Update account expiry time
 	if account.ExpireAt.After(time.Now()) {
-		newExpireTime = account.ExpireAt.AddDate(0, 0, 31)
+		newExpireTime = account.ExpireAt.AddDate(0, 0, extendConfig.DurationDays)
 	} else {
-		newExpireTime = time.Now().AddDate(0, 0, 31)
+		newExpireTime = time.Now().AddDate(0, 0, extendConfig.DurationDays)
 	}
 	if err := tx.Model(account).
 		Where("id = ?", account.ID).
@@ -146,10 +146,10 @@ func (ps *paymentService) ExtendAccountTime(ctx context.Context, account *models
 	// Create balance log
 	balanceLog := &models.BalanceLog{
 		UserID:      userID,
-		Amount:      -extendPrice.Amount,
+		Amount:      -extendConfig.Amount,
 		Type:        "extend_account",
 		Reference:   fmt.Sprintf("account_%d", account.ID),
-		Description: fmt.Sprintf("Extended account %d for 31 days (%s)", account.ID, extendPrice.Description),
+		Description: fmt.Sprintf("Extended account %d for %d days (%s)", account.ID, extendConfig.DurationDays, extendConfig.Description),
 		Balance:     user.Balance,
 	}
 
