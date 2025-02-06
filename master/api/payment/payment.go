@@ -2,6 +2,7 @@ package payment
 
 import (
 	"GalaxyEmpireWeb/api"
+	"GalaxyEmpireWeb/config"
 	"GalaxyEmpireWeb/logger"
 	"GalaxyEmpireWeb/services/paymentservice"
 	"GalaxyEmpireWeb/utils"
@@ -14,6 +15,23 @@ import (
 )
 
 var log = logger.GetLogger()
+
+// @Summary Get all Prices
+// @Description Get all Prices for Stripe
+// @Tags payment
+// @Produce json
+// @Success 200 {array} config.PriceConfig
+// @Failure 500 {object} api.ErrorResponse
+// @Router /payment/prices [get]
+func GetPrices(c *gin.Context) {
+	log.Info("GetPrices", zap.String("traceID", utils.TraceIDFromContext(c)))
+
+	prices := config.GetAvailablePrices()
+	c.JSON(http.StatusOK, gin.H{
+		"succeed": true,
+		"data":    prices,
+	})
+}
 
 // @Summary Create a checkout session
 // @Description Creates a Stripe checkout session for payment

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -63,50 +64,25 @@ func LoadPrices(configPath string) error {
 	return nil
 }
 
+func initPrice() {
+	pricesOnce.Do(func() {
+		if err := LoadPrices(""); err != nil {
+			log.Fatalf("Failed to load config: %v", err)
+		}
+	})
+}
+
 // GetPrice returns the price configuration for a given price type
 func GetPrice(priceType PriceType) (PriceConfig, bool) {
-	if prices == nil {
-		// Load default configuration if not loaded
-		pricesOnce.Do(func() {
-			prices = &priceConfiguration{
-				Prices: map[PriceType]PriceConfig{
-					Deposit10USD: {
-						Amount:      1000,
-						StripeID:    "price_1Qa5BOHV7ayy0qkuE1uOeZSK",
-						Available:   true,
-						Description: "Deposit $10",
-					},
-					Deposit30USD: {
-						Amount:      3000,
-						StripeID:    "price_1Qa5BOHV7ayy0qkuE1uOeZSK",
-						Available:   true,
-						Description: "Deposit $30",
-					},
-					Deposit50USD: {
-						Amount:      5000,
-						StripeID:    "price_1Qa5BOHV7ayy0qkuE1uOeZSK",
-						Available:   true,
-						Description: "Deposit $50",
-					},
-					ExtendPrice: {
-						Amount:      500,
-						Available:   true,
-						Description: "Extend account for 31 days",
-					},
-				},
-			}
-		})
-	}
-
+	initPrice()
 	price, exists := prices.Prices[priceType]
 	return price, exists
 }
 
+
 // GetPriceByAmount returns the price configuration for a given amount
 func GetPriceByAmount(amount int64) (PriceConfig, bool) {
-	if prices == nil {
-		LoadPrices("")
-	}
+initPrice()
 
 	for _, price := range prices.Prices {
 		if price.Amount == amount && price.Available {
