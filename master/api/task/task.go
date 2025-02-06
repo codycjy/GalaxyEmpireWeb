@@ -66,7 +66,6 @@ func GetTaskByID(c *gin.Context) {
 		Data:    task.ToDTO(),
 		TraceID: traceID,
 	})
-
 }
 
 // GetTaskByAccountID godoc
@@ -120,7 +119,6 @@ func GetTaskByAccountID(c *gin.Context) {
 		Data:    &account,
 		TraceID: traceID,
 	})
-
 }
 
 // AddTask godoc
@@ -245,6 +243,70 @@ func DeleteTask(c *gin.Context) {
 	c.JSON(http.StatusOK, taskResponse{
 		Succeed: true,
 		Data:    task.ToDTO(),
+		TraceID: traceID,
+	})
+}
+
+type updateTaskEnabledRequest struct {
+	Enabled bool `json:"enabled"`
+}
+
+// UpdateTaskEnabled godoc
+// @Summary Update task enabled status
+// @Description Update the enabled status of a task
+// @Tags task
+// @Accept json
+// @Produce json
+// @Param id path int true "Task ID"
+// @Param request body updateTaskEnabledRequest true "Enable status"
+// @Success 200 {object} api.Response "Successfully updated task status"
+// @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
+// @Failure 403 {object} api.ErrorResponse "Forbidden with error message"
+// @Failure 404 {object} api.ErrorResponse "Not Found with error message"
+// @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
+// @Router /task/{id}/enabled [put]
+func UpdateTaskEnabled(c *gin.Context) {
+	traceID := c.GetString("traceID")
+
+	// Parse task ID
+	idStr := c.Param("id")
+	taskID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Invalid Task ID",
+			TraceID: traceID,
+		})
+		return
+	}
+
+	// Parse request body
+	var req updateTaskEnabledRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Invalid Request Body",
+			TraceID: traceID,
+		})
+		return
+	}
+
+	// Update task enabled status
+	taskService := taskservice.GetService()
+	if err := taskService.UpdateTaskEnabled(c, uint(taskID), req.Enabled); err != nil {
+		c.JSON(err.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: err.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, taskResponse{
+		Succeed: true,
 		TraceID: traceID,
 	})
 }
