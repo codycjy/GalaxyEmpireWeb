@@ -31,6 +31,7 @@ class TestAccount:
                 "username": "testaccount_main",
                 "email": "testaccount_main@example.com",
                 "password": "password123",
+                "server":"test_server"
             }
             create_response = register_user['session'].post(f"{base_url}account", json=account_data)
             allure.attach(create_response.text, name="Create Account Response", attachment_type=allure.attachment_type.TEXT)
@@ -97,6 +98,7 @@ class TestAccount:
             "username": "main_account",
             "email": "main_account@example.com",
             "password": "password123",
+            "server":"test_server",
         }
         create_response = main_user['session'].post(f"{base_url}account", json=account_data)
         allure.attach(create_response.text, name="Create Account Response", attachment_type=allure.attachment_type.TEXT)
