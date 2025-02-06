@@ -12,7 +12,7 @@ type PaymentIntention struct {
 	User          User `gorm:"foreignKey:UserID"`
 	Amount        int64
 	Currency      string
-  Status        string // pending, completed, failed // TODO: new type later
+	Status        string // pending, completed, failed // TODO: new type later
 	SessionID     string `gorm:"index"`
 	PaymentIntent string
 	CompletedAt   *time.Time

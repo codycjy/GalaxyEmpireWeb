@@ -79,10 +79,9 @@ func GetPrice(priceType PriceType) (PriceConfig, bool) {
 	return price, exists
 }
 
-
 // GetPriceByAmount returns the price configuration for a given amount
 func GetPriceByAmount(amount int64) (PriceConfig, bool) {
-initPrice()
+	initPrice()
 
 	for _, price := range prices.Prices {
 		if price.Amount == amount && price.Available {

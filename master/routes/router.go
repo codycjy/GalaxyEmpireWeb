@@ -79,7 +79,7 @@ func RegisterRoutes() *gin.Engine {
 		p.POST("/deposit", payment.CreateDepositSession)
 		p.GET("/history", payment.GetPaymentHistory)
 		p.GET("/:payment_id", payment.GetPaymentStatus)
-    p.GET("/prices",payment.GetPrices)
+		p.GET("/prices", payment.GetPrices)
 	}
 	admin := v1.Group("/admin")
 	admin.Use(middleware.AdminAuthMiddleware())
