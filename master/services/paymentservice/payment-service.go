@@ -20,14 +20,32 @@ import (
 	"gorm.io/gorm"
 )
 
-var paymentServiceInstance *paymentService
-var log = logger.GetLogger()
+var (
+	paymentServiceInstance *paymentService
+	log                    = logger.GetLogger()
+	successCallback        string
+	cancelCallback         string
+)
 
 type paymentService struct {
 	DB *gorm.DB
 }
 
+func initEnv() {
+	successCallback = os.Getenv("STRIPE_SUCCESS_CALLBACK")
+	if successCallback == "" {
+		successCallback = "http://localhost:9333/api/v1/ping"
+		log.Warn("Use default success callback", zap.String("successCallback", successCallback))
+	}
+	cancelCallback = os.Getenv("STRIPE_CANCEL_CALLBACK")
+	if cancelCallback == "" {
+		cancelCallback = "http://localhost:9333/api/v1/ping"
+		log.Warn("Use default cancel callback", zap.String("cancelCallback", cancelCallback))
+	}
+}
+
 func InitService(db *gorm.DB) {
+	initEnv()
 	stripeKey := config.GetStripeConfig().SecretKey
 	if stripeKey == "" {
 		log.Fatal("[PaymentService] Stripe secret key is not configured")
@@ -261,8 +279,8 @@ func (ps *paymentService) HandleWebhook(ctx context.Context, payload []byte, sig
 
 	return nil
 }
-func (ps *paymentService) handleSessionCompleted(ctx context.Context, session *stripe.CheckoutSession) *utils.ServiceError {
 
+func (ps *paymentService) handleSessionCompleted(ctx context.Context, session *stripe.CheckoutSession) *utils.ServiceError {
 	// First try to find the payment intention by session ID
 	var intention models.PaymentIntention
 	traceID := utils.TraceIDFromContext(ctx)
@@ -324,6 +342,7 @@ func (ps *paymentService) handleSessionCompleted(ctx context.Context, session *s
 		zap.Uint("paymentID", payment.ID))
 	return nil
 }
+
 func (ps *paymentService) handleSessionExpired(ctx context.Context, sessionID string) error {
 	// Find the payment intention by session ID
 	var intention models.PaymentIntention
@@ -352,6 +371,7 @@ func (ps *paymentService) handleSessionExpired(ctx context.Context, sessionID st
 		zap.String("traceID", utils.TraceIDFromContext(ctx)))
 	return nil
 }
+
 func (ps *paymentService) fulfillOrder(ctx context.Context, payment *models.Payment) error {
 	return ps.DB.Transaction(func(tx *gorm.DB) error {
 		// 锁定用户记录
@@ -403,6 +423,7 @@ func (ps *paymentService) fulfillOrder(ctx context.Context, payment *models.Paym
 		return tx.Create(balanceLog).Error
 	})
 }
+
 func getPriceAmount(priceID string) int64 {
 	// First try to get price from configuration
 	for _, price := range config.GetPrices() {
