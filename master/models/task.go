@@ -60,16 +60,17 @@ type Task struct {
 
 func (t Task) ToDTO() *TaskDTO {
 	return &TaskDTO{
-		Model:     t.Model,
-		Name:      t.Name,
-		NextStart: time.Unix(t.NextStart, 0),
-		Enabled:   t.Enabled,
-		AccountID: t.AccountID,
-		TaskType:  t.TaskType,
-		Targets:   t.Targets,
-		Repeat:    t.Repeat,
-		TargetNum: len(t.Targets),
-		Fleet:     t.Fleet,
+		Model:       t.Model,
+		Name:        t.Name,
+		NextStart:   time.Unix(t.NextStart, 0),
+		Enabled:     t.Enabled,
+		AccountID:   t.AccountID,
+		TaskType:    t.TaskType,
+		Targets:     t.Targets,
+		StartPlanet: t.StartPlanet,
+		Repeat:      t.Repeat,
+		TargetNum:   len(t.Targets),
+		Fleet:       t.Fleet,
 	}
 }
 
@@ -131,16 +132,17 @@ func (t *Task) ToSingleTaskRequest(account *Account) (*SingleTaskRequest, error)
 
 type TaskDTO struct { // TODO: finish func
 	gorm.Model
-	Name      string    `json:"name"`
-	NextStart time.Time `json:"next_start"`
-	Enabled   bool      `json:"enabled"`
-	AccountID uint      `json:"account_id"`
-	TaskType  int       `json:"task_type"`
-	Targets   []Target  `json:"targets" gorm:"foreignKey:TaskID"`
-	Repeat    int       `json:"repeat"`
-	NextIndex int       `json:"next_index"`
-	TargetNum int       `json:"target_num"`
-	Fleet     Fleet     `json:"fleet" gorm:"foreignKey:TaskID"`
+	Name        string    `json:"name"`
+	NextStart   time.Time `json:"next_start"`
+	Enabled     bool      `json:"enabled"`
+	AccountID   uint      `json:"account_id"`
+	TaskType    int       `json:"task_type"`
+	Targets     []Target  `json:"targets" gorm:"foreignKey:TaskID"`
+	Repeat      int       `json:"repeat"`
+	NextIndex   int       `json:"next_index"`
+	StartPlanet Target    `json:"start_planet"`
+	TargetNum   int       `json:"target_num"`
+	Fleet       Fleet     `json:"fleet" gorm:"foreignKey:TaskID"`
 }
 
 type SingleTaskRequest struct {
