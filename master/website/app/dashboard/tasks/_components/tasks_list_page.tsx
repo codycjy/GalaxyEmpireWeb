@@ -10,23 +10,25 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Switch } from "@/components/ui/switch";
+import EditTaskDialog from './edit_task_dialog';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
 import CreateTaskDialog from './create_task_dialog';
 
+
 interface Target {
-  id: number;
-  task_id: number;
+  ID: number;
+  CreatedAt: string;
+  UpdatedAt: string;
+  DeletedAt: string | null;
   galaxy: number;
   system: number;
-  position: number;
+  planet: number;
+  is_moon: boolean;
+  task_id: number;
 }
 
-interface Fleet {
-  id: number;
-  task_id: number;
-  ships: Record<string, number>; // 船只配置
-}
 
 interface Task {
   ID: number;            // 大写 ID
@@ -38,10 +40,11 @@ interface Task {
   enabled: boolean;
   account_id: number;
   task_type: number;
-  targets: Target[] | null;
+  targets: Target[];
   repeat: number;
   next_index: number;
   target_num: number;
+  start_planet_id: number;  // 添加这个字段
   fleet: {
     ID: number;
     CreatedAt: string;
@@ -107,7 +110,7 @@ export default function TaskListPage() {
   // 格式化目标显示
   const formatTarget = (target: Target | null) => {
     if (!target) return '未设置';
-    return `[${target.galaxy}:${target.system}:${target.position}]`;
+    return `[${target.galaxy}:${target.system}:${target.planet}]`;
   };
 
   const fetchTasks = useCallback(async () => {
@@ -123,7 +126,7 @@ export default function TaskListPage() {
         return;
       }
 
-      const taskResponse = await fetch(`/api/v1/task/account/${accountId}`, {
+      const taskResponse = await fetch(`/api/v1/account/${accountId}`, {
         headers: {
           'Authorization': token,
         },
@@ -134,48 +137,17 @@ export default function TaskListPage() {
       }
 
       const responseData = await taskResponse.json() as AccountResponse;
-      
+      console.log('API Response:', responseData.data.tasks);
+
       if (responseData.succeed) {
-        // 直接使用 data.tasks
-        const tasks = responseData.data.tasks.map(task => ({
-          id: task.ID,
-          name: task.name,
-          next_start: new Date(task.next_start).getTime() / 1000,
-          enabled: task.enabled,
-          account_id: task.account_id,
-          task_type: task.task_type,
-          status: task.status || 'pending',
-          targets: task.targets || [],
-          repeat: task.repeat,
-          next_index: task.next_index,
-          target_num: task.target_num,
-          fleet: {
-            id: task.fleet.ID,
-            lf: task.fleet.lf,
-            hf: task.fleet.hf,
-            cr: task.fleet.cr,
-            bs: task.fleet.bs,
-            dr: task.fleet.dr,
-            de: task.fleet.de,
-            ds: task.fleet.ds,
-            bomb: task.fleet.bomb,
-            guard: task.fleet.guard,
-            satellite: task.fleet.satellite,
-            cargo: task.fleet.cargo,
-            task_id: task.fleet.task_id,
-            created_at: task.fleet.CreatedAt,
-            updated_at: task.fleet.UpdatedAt
-          },
-          created_at: task.CreatedAt,
-          updated_at: task.UpdatedAt
-        }));
-        
+        console.log(' data:', responseData.data);
+        const tasks = responseData.data.tasks;
+        console.log('Tasks data:', tasks); // 检查任务数据
         setTasks(tasks);
         
-        // 更新账号信息
         setAccountInfo({
           username: responseData.data.username,
-          password: '', // 密码不在响应中
+          password: '', 
           server: responseData.data.server,
           email: responseData.data.email
         });
@@ -211,91 +183,152 @@ export default function TaskListPage() {
       </div>
     );
   }
+  
+  const handleDeleteTask = async (taskId: number) => {
+    if (!confirm('确定要删除此任务吗？')) {
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('未登录或登录已过期');
+        return;
+      }
+  
+      const response = await fetch('/api/v1/task', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: taskId
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error('删除失败');
+      }
+  
+      toast.success('删除成功');
+      fetchTasks(); // 刷新任务列表
+    } catch (error) {
+      console.error('删除失败:', error);
+      toast.error('删除失败');
+    }
+  };
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">任务列表</h1>
-        <div className="flex gap-4">
-          {accountId && (
-            <CreateTaskDialog 
-              accountId={accountId} 
-              onSuccess={handleTaskCreated}
-            />
-          )}
-          <Button onClick={() => fetchTasks()} disabled={loading}>
-            刷新
-          </Button>
-        </div>
+    <div className="flex justify-between items-center mb-6">
+      <h1 className="text-2xl font-bold">任务列表</h1>
+      <div className="flex gap-4">
+        {accountId && (
+          <CreateTaskDialog 
+            accountId={accountId} 
+            onSuccess={handleTaskCreated}
+          />
+        )}
+        <Button onClick={() => fetchTasks()} disabled={loading}>
+          {loading ? '刷新中...' : '刷新'}
+        </Button>
       </div>
+    </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-center">任务名称</TableHead>
+            <TableHead className="text-center">类型</TableHead>
+            <TableHead className="text-center">目标星球</TableHead>
+            <TableHead className="text-center">重复次数</TableHead>
+            <TableHead className="text-center">编辑任务</TableHead>
+            <TableHead className="text-center">启用状态</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
             <TableRow>
-              <TableHead className="text-center">任务名称</TableHead>
-              <TableHead className="text-center">类型</TableHead>
-              <TableHead className="text-center">状态</TableHead>
-              <TableHead className="text-center">目标星球</TableHead>
-              <TableHead className="text-center">重复次数</TableHead>
-              <TableHead className="text-center">下次开始</TableHead>
-              <TableHead className="text-center">启用状态</TableHead>
+              <TableCell colSpan={5} className="text-center py-4">
+                加载中...
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
-                  加载中...
+          ) : tasks.length > 0 ? (
+            tasks.map((task) => (
+              <TableRow key={task.ID}>
+                <TableCell className="text-center">{task.name}</TableCell>
+                <TableCell className="text-center">{getTaskTypeName(task.task_type)}</TableCell>
+                <TableCell className="text-center">
+                  {task.targets && task.targets.length > 0 ? (
+                    task.targets.map((target, index) => (
+                      <span key={target.ID}>
+                        {index > 0 ? ', ' : ''}
+                        [{target.galaxy}:{target.system}:{target.planet}]
+                      </span>
+                    ))
+                  ) : (
+                    '未设置'
+                  )}
+                </TableCell>
+                <TableCell className="text-center">{task.repeat}</TableCell>
+                <TableCell className="text-center">
+                  <div className="flex justify-center gap-2">
+                    <EditTaskDialog 
+                      task={task} 
+                      onSuccess={fetchTasks}
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => handleDeleteTask(task.ID)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Switch
+                    checked={task.enabled}
+                    onCheckedChange={async (checked: boolean) => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        const response = await fetch(`/api/v1/task/${task.ID}/enabled`, {
+                          method: 'PUT',
+                          headers: token ? {
+                            'Authorization': token,
+                            'Content-Type': 'application/json',
+                          } : undefined,
+                          body: JSON.stringify({ enabled: checked })
+                        });
+  
+                        if (!response.ok) {
+                          throw new Error('更新失败');
+                        }
+  
+                        toast.success('更新成功');
+                        fetchTasks(); // 刷新任务列表
+                      } catch (error) {
+                        console.error('更新失败:', error);
+                        toast.error('更新失败');
+                      }
+                    }}
+                  />
                 </TableCell>
               </TableRow>
-            ) : tasks.length > 0 ? (
-              tasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell className="text-center">{task.name}</TableCell>
-                  <TableCell className="text-center">{getTaskTypeName(task.task_type)}</TableCell>
-                  <TableCell className="text-center">
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      task.status === 'completed' 
-                        ? 'bg-green-100 text-green-700'
-                        : task.status === 'failed'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {task.status === 'completed' ? '已完成' 
-                        : task.status === 'failed' ? '失败'
-                        : task.status === 'ready' ? '就绪'
-                        : '进行中'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {task.targets ? task.targets.map(formatTarget).join(', ') : '未设置'}
-                  </TableCell>
-                  <TableCell className="text-center">{task.repeat}</TableCell>
-                  <TableCell className="text-center">
-                    {task.next_start ? formatTimestamp(task.next_start) : '未设置'}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      task.enabled 
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {task.enabled ? '已启用' : '已禁用'}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
-                  暂无任务数据
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center py-4">
+                暂无任务数据
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
     </div>
   );
 }
