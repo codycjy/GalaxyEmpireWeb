@@ -168,38 +168,66 @@ func AddTask(c *gin.Context) {
 // @Tags task
 // @Accept json
 // @Produce json
-// @Param task body models.Task true "Task"
+// @Param id path int true "Task ID"
+// @Param task body models.TaskUpdateDTO true "Task updates"
 // @Success 200 {object} taskResponse "Successful response with task ID"
 // @Failure 400 {object} api.ErrorResponse "Bad Request with error message"
 // @Failure 500 {object} api.ErrorResponse "Internal Server Error with error message"
-// @Router /task [put]
-
+// @Router /task/{id} [put]
 func UpdateTask(c *gin.Context) {
 	traceID := c.GetString("traceID")
-	task := models.Task{}
-	if err := c.BindJSON(&task); err != nil {
+
+	// 从URL参数获取taskID
+	idStr := c.Param("id")
+	taskID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{
 			Succeed: false,
 			Error:   err.Error(),
-			Message: "Bind Task Error",
+			Message: "Invalid Task ID",
 			TraceID: traceID,
 		})
 		return
 	}
+
+	// 解析更新请求
+	updates := &models.TaskUpdateDTO{}
+	if err := c.BindJSON(updates); err != nil {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: "Invalid Request Body",
+			TraceID: traceID,
+		})
+		return
+	}
+
 	taskService := taskservice.GetService()
-	err1 := taskService.UpdateTask(c, &task)
-	if err1 != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+	if err := taskService.UpdateTask(c, uint(taskID), updates); err != nil {
+		c.JSON(err.StatusCode(), api.ErrorResponse{
+			Succeed: false,
+			Error:   err.Error(),
+			Message: err.Msg(),
+			TraceID: traceID,
+		})
+		return
+	}
+
+	// 获取更新后的task
+	updatedTask, err1 := taskService.GetTaskByID(c, uint(taskID))
+	if err != nil {
+		c.JSON(err1.StatusCode(), api.ErrorResponse{
 			Succeed: false,
 			Error:   err1.Error(),
-			Message: "Update Task Error",
+			Message: err1.Msg(),
 			TraceID: traceID,
 		})
 		return
 	}
+
 	c.JSON(http.StatusOK, taskResponse{
 		Succeed: true,
-		Data:    task.ToDTO(),
+		Data:    updatedTask.ToDTO(),
 		TraceID: traceID,
 	})
 }

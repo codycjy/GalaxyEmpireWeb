@@ -62,7 +62,7 @@ func RegisterRoutes() *gin.Engine {
 		t.GET("/account/:id", task.GetTaskByAccountID)
 		t.POST("", task.AddTask)
 		t.DELETE("", task.DeleteTask)
-		t.PUT("", task.UpdateTask)
+		t.PUT("/:id", task.UpdateTask)
 		t.PUT("/:id/enabled", task.UpdateTaskEnabled)
 	}
 	task.RegisterPlanetRoutes(t)
