@@ -126,34 +126,46 @@ func (ts *taskService) GetTaskByID(ctx context.Context, taskID uint) (*models.Ta
 	}
 	return &task, nil
 }
-func (ts *taskService) UpdateTask(ctx context.Context, task *models.Task) *utils.ServiceError {
+func (ts *taskService) UpdateTask(ctx context.Context, taskID uint, updates *models.TaskUpdateDTO) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	userID := utils.UserIDFromContext(ctx)
-	log.Info("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
+	log.Info("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("updates", updates))
 
-	allowed, err := ts.Enforcer.Enforce(ctx, models.UserEntityPrefix+strconv.Itoa(int(userID)), task.GetEntityPrefix()+strconv.Itoa(int(task.ID)), "write")
+	// 首先获取现有task
+	existingTask, err := ts.GetTaskByID(ctx, taskID)
 	if err != nil {
-		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
-		return utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
+		return err
+	}
+
+	// 检查权限
+	allowed, err1 := ts.Enforcer.Enforce(ctx, models.UserEntityPrefix+strconv.Itoa(int(userID)), existingTask.GetEntityPrefix()+strconv.Itoa(int(taskID)), "write")
+	if err1 != nil {
+		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err1))
+		return utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err1)
 	}
 	if !allowed {
-		log.Warn("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
+		log.Warn("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID))
 		return utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
 	}
 
+	// 应用更新
+	existingTask.ApplyUpdates(updates)
+
+	// 保存更新
 	tx := ts.DB.Begin()
-	if err := tx.Save(task).Error; err != nil {
-		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+	if err := tx.Save(existingTask).Error; err != nil {
 		tx.Rollback()
+		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return utils.NewServiceError(http.StatusInternalServerError, "Update Task Error", err)
 	}
-	log.Info("[TaskService] UpdateTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("task", task), zap.Int("AccountID", int(task.AccountID)))
 
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
 		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return utils.NewServiceError(http.StatusInternalServerError, "Commit Transaction Error", err)
 	}
+
+	log.Info("[TaskService] UpdateTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID))
 	return nil
 }
 func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.ServiceError {

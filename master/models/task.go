@@ -130,6 +130,56 @@ func (t *Task) ToSingleTaskRequest(account *Account) (*SingleTaskRequest, error)
 	}, nil
 }
 
+// TaskUpdateDTO 用于部分更新Task的DTO
+type TaskUpdateDTO struct {
+	Name          *string   `json:"name,omitempty"`
+	NextStart     *int64    `json:"next_start,omitempty"`
+	Enabled       *bool     `json:"enabled,omitempty"`
+	TaskType      *int      `json:"task_type,omitempty"`
+	StartPlanet   *Target   `json:"start_planet,omitempty"`
+	StartPlanetID *uint     `json:"start_planet_id,omitempty"`
+	Targets       *[]Target `json:"targets,omitempty"`
+	Repeat        *int      `json:"repeat,omitempty"`
+	Fleet         *Fleet    `json:"fleet,omitempty"`
+}
+
+// ApplyUpdates 将非空更新应用到现有Task
+func (t *Task) ApplyUpdates(updates *TaskUpdateDTO) {
+	if updates == nil {
+		return
+	}
+
+	if updates.Name != nil {
+		t.Name = *updates.Name
+	}
+	if updates.NextStart != nil {
+		t.NextStart = *updates.NextStart
+	}
+	if updates.Enabled != nil {
+		t.Enabled = *updates.Enabled
+	}
+	if updates.TaskType != nil {
+		t.TaskType = *updates.TaskType
+	}
+	if updates.StartPlanet != nil {
+		t.StartPlanet = *updates.StartPlanet
+	}
+	if updates.Targets != nil {
+		t.Targets = *updates.Targets
+		t.TargetNum = len(*updates.Targets)
+		t.NextIndex = 0 // Reset next index when targets are updated
+	}
+	if updates.Repeat != nil {
+		t.Repeat = *updates.Repeat
+	}
+	if updates.Fleet != nil {
+		t.Fleet = *updates.Fleet
+	}
+	if updates.StartPlanetID != nil {
+		t.StartPlanetID = *updates.StartPlanetID
+	}
+}
+
 type TaskDTO struct { // TODO: finish func
 	gorm.Model
 	Name        string    `json:"name"`
