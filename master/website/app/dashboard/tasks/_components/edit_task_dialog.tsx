@@ -56,6 +56,7 @@ interface Task {
     task_id: number;
   };
   start_planet_id: number;
+  start_planet: Target;
 }
 
 interface EditTaskDialogProps {
@@ -92,10 +93,10 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
       setStartPlanetId(0);
       setCheckUuid('');
       setStartPlanet({
-        galaxy: 0,
-        system: 0,
-        planet: 0,
-        is_moon: false
+        galaxy: task.start_planet?.galaxy || 0,
+        system: task.start_planet?.system || 0,
+        planet: task.start_planet?.planet || 0,
+        is_moon: task.start_planet?.is_moon || false
       });
       setEditTask(task);
     }
@@ -436,21 +437,21 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
                 <Input
                   type="number"
                   placeholder="galaxy"
-                  value={startPlanet.galaxy || ''}
+                  value={startPlanet.galaxy || task.start_planet?.galaxy || ''}
                   onChange={(e) => handleStartPlanetChange('galaxy', parseInt(e.target.value))}
                   className="w-24"
                 />
                 <Input
                   type="number"
                   placeholder="system"
-                  value={startPlanet.system || ''}
+                  value={startPlanet.system || task.start_planet?.system || ''}
                   onChange={(e) => handleStartPlanetChange('system', parseInt(e.target.value))}
                   className="w-24"
                 />
                 <Input
                   type="number"
                   placeholder="planet"
-                  value={startPlanet.planet || ''}
+                  value={startPlanet.planet || task.start_planet?.planet || ''}
                   onChange={(e) => handleStartPlanetChange('planet', parseInt(e.target.value))}
                   className="w-24"
                 />
@@ -471,7 +472,7 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
                       disabled={isChecking || startPlanetId !== 0}
                       className="w-[80px]"
                     >
-                      重新检查
+                      刷新
                     </Button>
                   )}
                   {startPlanetId !== 0 && (

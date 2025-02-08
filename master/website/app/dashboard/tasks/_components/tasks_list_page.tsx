@@ -45,6 +45,7 @@ interface Task {
   next_index: number;
   target_num: number;
   start_planet_id: number;  // 添加这个字段
+  start_planet: Target;
   fleet: {
     ID: number;
     CreatedAt: string;
