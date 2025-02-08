@@ -87,6 +87,7 @@ func (service *accountService) GetById(ctx context.Context, id uint) (*models.Ac
 	err := cur.Where("id = ?", id).Preload("Tasks").
 		Preload("Tasks.Targets").
 		Preload("Tasks.Fleet").
+		Preload("Tasks.StartPlanet").
 		First(&account).Error
 	if err != nil {
 		log.Error("[service]Get Account By ID failed",
