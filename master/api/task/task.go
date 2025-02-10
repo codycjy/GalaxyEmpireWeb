@@ -157,7 +157,6 @@ func AddTask(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, taskResponse{
 		Succeed: true,
-		Data:    task.ToDTO(),
 		TraceID: traceID,
 	})
 }
@@ -213,21 +212,8 @@ func UpdateTask(c *gin.Context) {
 		return
 	}
 
-	// 获取更新后的task
-	updatedTask, err1 := taskService.GetTaskByID(c, uint(taskID))
-	if err != nil {
-		c.JSON(err1.StatusCode(), api.ErrorResponse{
-			Succeed: false,
-			Error:   err1.Error(),
-			Message: err1.Msg(),
-			TraceID: traceID,
-		})
-		return
-	}
-
 	c.JSON(http.StatusOK, taskResponse{
 		Succeed: true,
-		Data:    updatedTask.ToDTO(),
 		TraceID: traceID,
 	})
 }
