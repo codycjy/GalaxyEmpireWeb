@@ -15,8 +15,10 @@ import (
 	"gorm.io/gorm"
 )
 
-var taskServiceInstance *taskService
-var log = logger.GetLogger()
+var (
+	taskServiceInstance *taskService
+	log                 = logger.GetLogger()
+)
 
 type taskService struct {
 	DB       *gorm.DB
@@ -30,6 +32,7 @@ func GetService() *taskService {
 	}
 	return taskServiceInstance
 }
+
 func InitService(db *gorm.DB, mq *queue.RabbitMQConnection, enforcer casbinservice.Enforcer) {
 	taskServiceInstance = NewService(db, mq, enforcer)
 	go taskServiceInstance.GenerateTaskLoop()
@@ -99,6 +102,7 @@ func (ts *taskService) GetTaskByAccountID(ctx context.Context, accountID uint) (
 	}
 	return tasks, nil
 }
+
 func (ts *taskService) GetTaskByID(ctx context.Context, taskID uint) (*models.Task, *utils.ServiceError) {
 	traceID := utils.TraceIDFromContext(ctx)
 	userID := utils.UserIDFromContext(ctx)
@@ -106,7 +110,6 @@ func (ts *taskService) GetTaskByID(ctx context.Context, taskID uint) (*models.Ta
 	task.ID = taskID // Set ID first so we can use it in prefix
 	log.Info("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
 	allowed, err := ts.Enforcer.Enforce(ctx, models.UserEntityPrefix+strconv.Itoa(int(userID)), task.GetEntityPrefix()+strconv.Itoa(int(taskID)), "read")
-
 	if err != nil {
 		log.Error("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
@@ -126,37 +129,49 @@ func (ts *taskService) GetTaskByID(ctx context.Context, taskID uint) (*models.Ta
 	}
 	return &task, nil
 }
+
 func (ts *taskService) UpdateTask(ctx context.Context, taskID uint, updates *models.TaskUpdateDTO) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	userID := utils.UserIDFromContext(ctx)
 	log.Info("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Any("updates", updates))
 
-	// 首先获取现有task
-	existingTask, err := ts.GetTaskByID(ctx, taskID)
-	if err != nil {
-		return err
+	tx := ts.DB.Begin()
+
+	var existingTask models.Task
+	if err := tx.First(&existingTask, taskID).Error; err != nil {
+		tx.Rollback()
+		return utils.NewServiceError(http.StatusNotFound, "Task not found", err)
 	}
 
-	// 检查权限
 	allowed, err1 := ts.Enforcer.Enforce(ctx, models.UserEntityPrefix+strconv.Itoa(int(userID)), existingTask.GetEntityPrefix()+strconv.Itoa(int(taskID)), "write")
 	if err1 != nil {
+		tx.Rollback()
 		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err1))
 		return utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err1)
 	}
 	if !allowed {
+		tx.Rollback()
 		log.Warn("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID))
 		return utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
 	}
 
-	// 应用更新
-	existingTask.ApplyUpdates(updates)
+	// 应用更新并获取更新字段map
+	updateMap := existingTask.ApplyUpdates(updates) // we do not update the existingTask object here
+	if len(updateMap) > 0 {
+		if err := tx.Model(&existingTask).Updates(updateMap).Error; err != nil {
+			tx.Rollback()
+			log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+			return utils.NewServiceError(http.StatusInternalServerError, "Update Task Error", err)
+		}
+	}
 
-	// 保存更新
-	tx := ts.DB.Begin()
-	if err := tx.Save(existingTask).Error; err != nil {
-		tx.Rollback()
-		log.Error("[TaskService] UpdateTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
-		return utils.NewServiceError(http.StatusInternalServerError, "Update Task Error", err)
+	// 处理 Targets 更新
+	if updates.Targets != nil {
+		if err := tx.Model(&existingTask).Association("Targets").Replace(*updates.Targets); err != nil {
+			tx.Rollback()
+			log.Error("[TaskService] Update Targets Error", zap.Error(err))
+			return utils.NewServiceError(http.StatusInternalServerError, "Update Targets Error", err)
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -168,6 +183,7 @@ func (ts *taskService) UpdateTask(ctx context.Context, taskID uint, updates *mod
 	log.Info("[TaskService] UpdateTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID))
 	return nil
 }
+
 func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.ServiceError {
 	traceID := utils.TraceIDFromContext(ctx)
 	userID := utils.UserIDFromContext(ctx)
@@ -195,7 +211,6 @@ func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.Servi
 
 	log.Info("[TaskService] DeleteTask Succeed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
 	return nil
-
 }
 
 func (ts *taskService) UpdateTaskEnabled(ctx context.Context, taskID uint, enabled bool) *utils.ServiceError {

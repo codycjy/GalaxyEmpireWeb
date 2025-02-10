@@ -143,41 +143,53 @@ type TaskUpdateDTO struct {
 	Fleet         *Fleet       `json:"fleet,omitempty"`
 }
 
-// ApplyUpdates 将非空更新应用到现有Task
-func (t *Task) ApplyUpdates(updates *TaskUpdateDTO) {
+func (t *Task) ApplyUpdates(updates *TaskUpdateDTO) map[string]interface{} {
 	if updates == nil {
-		return
+		return nil
 	}
+
+	updateMap := make(map[string]interface{})
 
 	if updates.Name != nil {
 		t.Name = *updates.Name
+		updateMap["name"] = t.Name
 	}
 	if updates.NextStart != nil {
 		t.NextStart = *updates.NextStart
+		updateMap["next_start"] = t.NextStart
 	}
 	if updates.Enabled != nil {
 		t.Enabled = *updates.Enabled
+		updateMap["enabled"] = t.Enabled
 	}
 	if updates.TaskType != nil {
 		t.TaskType = *updates.TaskType
+		updateMap["task_type"] = t.TaskType
 	}
 	if updates.StartPlanet != nil {
 		t.StartPlanet = *updates.StartPlanet
-	}
-	if updates.Targets != nil {
-		t.Targets = *updates.Targets
-		t.TargetNum = len(*updates.Targets)
-		t.NextIndex = 0 // Reset next index when targets are updated
+		updateMap["start_planet"] = t.StartPlanet
 	}
 	if updates.Repeat != nil {
 		t.Repeat = *updates.Repeat
+		updateMap["repeat"] = t.Repeat
 	}
 	if updates.Fleet != nil {
 		t.Fleet = *updates.Fleet
+		updateMap["fleet"] = t.Fleet
 	}
 	if updates.StartPlanetID != nil {
 		t.StartPlanetID = *updates.StartPlanetID
+		updateMap["start_planet_id"] = t.StartPlanetID
 	}
+	if updates.Targets != nil {
+		t.TargetNum = len(*updates.Targets)
+		t.NextIndex = 0
+		updateMap["target_num"] = t.TargetNum
+		updateMap["next_index"] = t.NextIndex
+	}
+
+	return updateMap
 }
 
 type TaskDTO struct { // TODO: finish func
