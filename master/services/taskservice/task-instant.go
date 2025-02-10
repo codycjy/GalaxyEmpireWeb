@@ -113,7 +113,7 @@ func (ts *taskService) QueryPlanetID(ctx context.Context, target *models.Target,
 	queryTask := models.SingleTaskRequest{
 		UUID:        uuid,
 		Account:     *account.ToInfo(),
-		StartPlanet: *target,
+		StartPlanet: models.StartPlanet{Target: *target},
 		TaskType:    models.TASKTYPE_QUERY_PLANET_ID,
 		NextStart:   time.Now().Unix(),
 	}

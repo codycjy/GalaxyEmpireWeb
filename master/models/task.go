@@ -43,19 +43,19 @@ const (
 
 type Task struct {
 	gorm.Model
-	Name          string   `json:"name"`
-	NextStart     int64    `json:"next_start"` // Unix timestamp seconds
-	Enabled       bool     `json:"enabled"`
-	AccountID     uint     `json:"account_id"`
-	TaskType      int      `json:"task_type"`
-	Status        string   `json:"status"`
-	StartPlanet   Target   `json:"start_planet" gorm:"foreignKey:TaskID"`
-	StartPlanetID uint     `json:"start_planet_id"`
-	Targets       []Target `json:"targets" gorm:"foreignKey:TaskID"`
-	Repeat        int      `json:"repeat"`
-	NextIndex     int      `json:"next_index"`
-	TargetNum     int      `json:"target_num"`
-	Fleet         Fleet    `json:"fleet" gorm:"foreignKey:TaskID"`
+	Name          string      `json:"name"`
+	NextStart     int64       `json:"next_start"`
+	Enabled       bool        `json:"enabled"`
+	AccountID     uint        `json:"account_id"`
+	TaskType      int         `json:"task_type"`
+	Status        string      `json:"status"`
+	StartPlanet   StartPlanet `json:"start_planet"`
+	StartPlanetID uint        `json:"start_planet_id"`
+	Targets       []Target    `json:"targets" gorm:"foreignKey:TaskID"`
+	Repeat        int         `json:"repeat"`
+	NextIndex     int         `json:"next_index"`
+	TargetNum     int         `json:"target_num"`
+	Fleet         Fleet       `json:"fleet" gorm:"foreignKey:TaskID"`
 }
 
 func (t Task) ToDTO() *TaskDTO {
@@ -132,15 +132,15 @@ func (t *Task) ToSingleTaskRequest(account *Account) (*SingleTaskRequest, error)
 
 // TaskUpdateDTO 用于部分更新Task的DTO
 type TaskUpdateDTO struct {
-	Name          *string   `json:"name,omitempty"`
-	NextStart     *int64    `json:"next_start,omitempty"`
-	Enabled       *bool     `json:"enabled,omitempty"`
-	TaskType      *int      `json:"task_type,omitempty"`
-	StartPlanet   *Target   `json:"start_planet,omitempty"`
-	StartPlanetID *uint     `json:"start_planet_id,omitempty"`
-	Targets       *[]Target `json:"targets,omitempty"`
-	Repeat        *int      `json:"repeat,omitempty"`
-	Fleet         *Fleet    `json:"fleet,omitempty"`
+	Name          *string      `json:"name,omitempty"`
+	NextStart     *int64       `json:"next_start,omitempty"`
+	Enabled       *bool        `json:"enabled,omitempty"`
+	TaskType      *int         `json:"task_type,omitempty"`
+	StartPlanet   *StartPlanet `json:"start_planet,omitempty"`
+	StartPlanetID *uint        `json:"start_planet_id,omitempty"`
+	Targets       *[]Target    `json:"targets,omitempty"`
+	Repeat        *int         `json:"repeat,omitempty"`
+	Fleet         *Fleet       `json:"fleet,omitempty"`
 }
 
 // ApplyUpdates 将非空更新应用到现有Task
@@ -182,17 +182,17 @@ func (t *Task) ApplyUpdates(updates *TaskUpdateDTO) {
 
 type TaskDTO struct { // TODO: finish func
 	gorm.Model
-	Name        string    `json:"name"`
-	NextStart   time.Time `json:"next_start"`
-	Enabled     bool      `json:"enabled"`
-	AccountID   uint      `json:"account_id"`
-	TaskType    int       `json:"task_type"`
-	Targets     []Target  `json:"targets" gorm:"foreignKey:TaskID"`
-	Repeat      int       `json:"repeat"`
-	NextIndex   int       `json:"next_index"`
-	StartPlanet Target    `json:"start_planet"`
-	TargetNum   int       `json:"target_num"`
-	Fleet       Fleet     `json:"fleet" gorm:"foreignKey:TaskID"`
+	Name        string      `json:"name"`
+	NextStart   time.Time   `json:"next_start"`
+	Enabled     bool        `json:"enabled"`
+	AccountID   uint        `json:"account_id"`
+	TaskType    int         `json:"task_type"`
+	Targets     []Target    `json:"targets" gorm:"foreignKey:TaskID"`
+	Repeat      int         `json:"repeat"`
+	NextIndex   int         `json:"next_index"`
+	StartPlanet StartPlanet `json:"start_planet"`
+	TargetNum   int         `json:"target_num"`
+	Fleet       Fleet       `json:"fleet" gorm:"foreignKey:TaskID"`
 }
 
 type SingleTaskRequest struct {
@@ -203,7 +203,7 @@ type SingleTaskRequest struct {
 	Enabled       bool        `json:"enabled"`
 	Account       AccountInfo `json:"account"`
 	TaskType      int         `json:"task_type"`
-	StartPlanet   Target      `json:"start_planet"`
+	StartPlanet   StartPlanet `json:"start_planet"`
 	StartPlanetID uint        `json:"start_planet_id"`
 	Target        Target      `json:"target"`
 	Repeat        int         `json:"repeat"`
