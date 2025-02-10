@@ -14,6 +14,9 @@ type Target struct {
 	Is_moon bool `json:"is_moon"`
 	TaskID  uint `json:"task_id"`
 }
+type StartPlanet struct {
+	Target
+}
 
 func (t Target) String() string {
 	is_moon_int := 0
