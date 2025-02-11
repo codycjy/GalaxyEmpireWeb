@@ -22,9 +22,6 @@ type RabbitMQConfig struct {
 // 获取 RabbitMQ 配置的函数
 func GetRabbitMQConfig() *RabbitMQConfig {
 	config := &RabbitMQConfig{}
-	if os.Getenv("env") == "test" {
-		return config
-	}
 	yamlFile, err := os.ReadFile("config/yaml/rabbitmq.yaml")
 	if err != nil {
 		log.Fatalf("yamlFile.Get err #%v ", err)
