@@ -144,6 +144,14 @@ func AddTask(c *gin.Context) {
 		})
 		return
 	}
+	if task.AccountID == 0 {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{
+			Succeed: false,
+			Error:   "Account ID is required",
+			TraceID: traceID,
+		})
+	}
+	task.ID = 0 // set ID to 0 to let gorm auto increment
 	taskService := taskservice.GetService()
 	err1 := taskService.AddTask(c, &task)
 	if err1 != nil {

@@ -166,17 +166,9 @@ func (t *Task) ApplyUpdates(updates *TaskUpdateDTO) map[string]interface{} {
 		t.TaskType = *updates.TaskType
 		updateMap["task_type"] = t.TaskType
 	}
-	if updates.StartPlanet != nil {
-		t.StartPlanet = *updates.StartPlanet
-		updateMap["start_planet"] = t.StartPlanet
-	}
 	if updates.Repeat != nil {
 		t.Repeat = *updates.Repeat
 		updateMap["repeat"] = t.Repeat
-	}
-	if updates.Fleet != nil {
-		t.Fleet = *updates.Fleet
-		updateMap["fleet"] = t.Fleet
 	}
 	if updates.StartPlanetID != nil {
 		t.StartPlanetID = *updates.StartPlanetID

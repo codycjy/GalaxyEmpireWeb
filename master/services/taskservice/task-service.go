@@ -8,6 +8,7 @@ import (
 	"GalaxyEmpireWeb/services/casbinservice"
 	"GalaxyEmpireWeb/utils"
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -164,13 +165,26 @@ func (ts *taskService) UpdateTask(ctx context.Context, taskID uint, updates *mod
 			return utils.NewServiceError(http.StatusInternalServerError, "Update Task Error", err)
 		}
 	}
-
-	// 处理 Targets 更新
 	if updates.Targets != nil {
-		if err := tx.Model(&existingTask).Association("Targets").Replace(*updates.Targets); err != nil {
+		err2 := handleAssociationUpdate(ctx, tx, &existingTask, "Targets", updates.Targets)
+		if err2 != nil {
 			tx.Rollback()
-			log.Error("[TaskService] Update Targets Error", zap.Error(err))
-			return utils.NewServiceError(http.StatusInternalServerError, "Update Targets Error", err)
+			return err2
+		}
+	}
+	if updates.StartPlanet != nil {
+		err2 := handleAssociationUpdate(ctx, tx, &existingTask, "StartPlanet", updates.StartPlanet)
+		if err2 != nil {
+			tx.Rollback()
+			return err2
+		}
+	}
+
+	if updates.Fleet != nil {
+		err2 := handleAssociationUpdate(ctx, tx, &existingTask, "Fleet", updates.Fleet)
+		if err2 != nil {
+			tx.Rollback()
+			return err2
 		}
 	}
 
@@ -250,5 +264,17 @@ func (ts *taskService) UpdateTaskEnabled(ctx context.Context, taskID uint, enabl
 		zap.Uint("userID", userID),
 		zap.Uint("taskID", taskID),
 		zap.Bool("enabled", enabled))
+	return nil
+}
+
+func handleAssociationUpdate(ctx context.Context, tx *gorm.DB, existingTask *models.Task, associationName string, updates any) *utils.ServiceError {
+	if err := tx.Model(existingTask).Association(associationName).Replace(updates); err != nil {
+		tx.Rollback()
+		log.Error(fmt.Sprintf("[TaskService] Update %s Error", associationName),
+			zap.String("traceID", utils.TraceIDFromContext(ctx)),
+			zap.Uint("TaskID", existingTask.ID),
+			zap.Error(err))
+		return utils.NewServiceError(http.StatusInternalServerError, fmt.Sprintf("Update %s Error", associationName), err)
+	}
 	return nil
 }
