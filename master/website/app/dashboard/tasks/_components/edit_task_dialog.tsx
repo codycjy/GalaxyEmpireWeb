@@ -262,7 +262,7 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
       return;
     }
 
-    if (typeof editTask.task_type !== 'number' || editTask.task_type <= 0) {
+    if (![1, 4].includes(editTask.task_type)) {
       toast.error('任务类型无效');
       return;
     }
@@ -272,9 +272,13 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
       return;
     }
 
-    // 2. 起始星球检查
-    const hasNewStartPlanet = startPlanet.galaxy || startPlanet.system || startPlanet.planet;
-    if (hasNewStartPlanet) {
+    // 2. 起始星球检查：只在修改时验证
+    const hasStartPlanetChanged = 
+      startPlanet.galaxy !== task.start_planet?.galaxy ||
+      startPlanet.system !== task.start_planet?.system ||
+      startPlanet.planet !== task.start_planet?.planet;
+
+    if (hasStartPlanetChanged) {
       if (!startPlanet.galaxy || !startPlanet.system || !startPlanet.planet) {
         toast.error('请完整填写起始星球坐标');
         return;
@@ -305,39 +309,66 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
     }
 
     // 4. 舰队配置检查
-    const fleet = editTask.fleet;
-    if (!fleet) {
-      toast.error('舰队配置无效');
-      return;
-    }
+    const fleetKeys = ['lf', 'hf', 'cr', 'bs', 'dr', 'de', 'ds', 'bomb', 'guard', 'satellite', 'cargo'] as const;
+    const fleetChanged = fleetKeys.some(key => editTask.fleet[key] !== task.fleet[key]);
 
-    const hasShips = Object.entries(fleet).some(([key, value]) => {
-      return key !== 'id' && 
-             key !== 'task_id' && 
-             typeof value === 'number' && 
-             value > 0;
-    });
-
-    if (!hasShips) {
-      toast.error('请至少配置一种舰船');
+    if (!fleetChanged) {
+      toast.error('请至少修改一种舰船');
       return;
     }
 
     // 5. 准备提交数据
     try {
-      const submitData = {
-        name: editTask.name.trim(),
-        enabled: editTask.enabled,
-        task_type: editTask.task_type,
-        start_planet_id: hasNewStartPlanet ? startPlanetId : task.start_planet_id,
-        targets: editTask.targets.map(target => ({
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('未登录或登录已过期');
+        return;
+      }
+      
+      // 构建提交数据，只包含已修改的字段
+      const submitData: any = {};
+
+      // 只有修改过的字段才添加到提交数据中
+      if (editTask.name !== task.name) {
+        submitData.name = editTask.name.trim();
+      }
+      
+      if (editTask.enabled !== task.enabled) {
+        submitData.enabled = editTask.enabled;
+      }
+      
+      if (editTask.task_type !== task.task_type) {
+        submitData.task_type = editTask.task_type;
+      }
+      
+      if (editTask.repeat !== task.repeat) {
+        submitData.repeat = editTask.repeat;
+      }
+
+      // 如果修改了起始星球
+      if (hasStartPlanetChanged) {
+        submitData.start_planet_id = startPlanetId;
+        submitData.start_planet = {
+          galaxy: startPlanet.galaxy,
+          system: startPlanet.system,
+          planet: startPlanet.planet,
+          is_moon: startPlanet.is_moon
+        };
+      }
+
+      // 如果修改了目标星球
+      if (JSON.stringify(editTask.targets) !== JSON.stringify(task.targets)) {
+        submitData.targets = editTask.targets.map(target => ({
           galaxy: target.galaxy,
           system: target.system,
           planet: target.planet,
           is_moon: target.is_moon || false
-        })),
-        repeat: editTask.repeat,
-        fleet: {
+        }));
+      }
+
+      // 如果修改了舰队配置
+      if (fleetChanged) {
+        submitData.fleet = {
           lf: editTask.fleet.lf || 0,
           hf: editTask.fleet.hf || 0,
           cr: editTask.fleet.cr || 0,
@@ -349,29 +380,34 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
           guard: editTask.fleet.guard || 0,
           satellite: editTask.fleet.satellite || 0,
           cargo: editTask.fleet.cargo || 0
-        }
-      };
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/v1/task/${editTask.ID}`, {
-        method: 'PUT',
-        headers: token ? {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        } : undefined,
-        body: JSON.stringify(submitData)
-      });
-
-      if (!response.ok) {
-        throw new Error('更新失败');
+        };
       }
 
-      toast.success('更新成功');
-      onSuccess();
-      setOpen(false);
+      // 只有有修改的字段时才发送请求
+      if (Object.keys(submitData).length > 0) {
+        const response = await fetch(`/api/v1/task/${editTask.ID}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(submitData)
+        });
+
+        if (!response.ok) {
+          throw new Error('更新失败');
+        }
+
+        toast.success('更新成功');
+        onSuccess();
+        setOpen(false);
+      } else {
+        toast.info('没有需要更新的内容');
+        setOpen(false);
+      }
     } catch (error) {
       console.error('更新失败:', error);
-      toast.error('更新失败');
+      toast.error(error instanceof Error ? error.message : '更新失败');
     }
   };
 
@@ -435,6 +471,34 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
               />
             </div>
             
+            {/* 任务类型 */}
+            <div className="grid gap-2">
+              <Label>任务类型</Label>
+              <select
+                value={editTask.task_type}
+                onChange={(e) => setEditTask(prev => ({...prev, task_type: parseInt(e.target.value)}))}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1"
+              >
+                <option value={1}>攻击</option>
+                <option value={4}>探索</option>
+              </select>
+            </div>
+            
+            {/* 重复次数 */}
+            <div className="grid gap-2">
+              <Label>重复次数</Label>
+              <Input
+                type="number"
+                min="1"
+                value={editTask.repeat}
+                onChange={(e) => setEditTask(prev => ({
+                  ...prev,
+                  repeat: parseInt(e.target.value) || 1
+                }))}
+                className="w-24"
+              />
+            </div>
+            
             {/* 起始星球 */}
             <div className="grid gap-2">
               <Label>起始星球</Label>
@@ -460,55 +524,32 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
                   onChange={(e) => handleStartPlanetChange('planet', parseInt(e.target.value))}
                   className="w-24"
                 />
-                <div className="flex items-center gap-2">
-                  <Button 
-                    type="button"
-                    onClick={checkStartPlanet}
-                    disabled={isChecking}
-                    className="w-[80px]"
-                  >
-                    {isChecking ? '检查中' : '检查'}
-                  </Button>
-                  {checkUuid && (
-                    <Button
+                {(startPlanet.galaxy !== task.start_planet?.galaxy ||
+                  startPlanet.system !== task.start_planet?.system ||
+                  startPlanet.planet !== task.start_planet?.planet) && (
+                  <div className="flex items-center gap-2">
+                    <Button 
                       type="button"
-                      variant="outline"
-                      onClick={manualCheckResult}
-                      disabled={isChecking || startPlanetId !== 0}
+                      onClick={checkStartPlanet}
+                      disabled={isChecking}
                       className="w-[80px]"
                     >
-                      刷新
+                      {isChecking ? '检查中' : '检查'}
                     </Button>
-                  )}
-                  {startPlanetId !== 0 && (
-                    <span className="text-green-600 flex items-center">
-                      <svg
-                        viewBox="0 0 1024 1024"
-                        fill="currentColor"
-                        className="w-4 h-4 mr-1"
+                    {checkUuid && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={manualCheckResult}
+                        disabled={isChecking || startPlanetId !== 0}
+                        className="w-[80px]"
                       >
-                        <path d="M912 190h-69.9c-9.8 0-19.1 4.5-25.1 12.2L404.7 724.5 207 474a32 32 0 0 0-25.1-12.2H112c-6.7 0-10.4 7.7-6.3 12.9l273.9 347c12.8 16.2 37.4 16.2 50.3 0l488.4-618.9c4.1-5.1.4-12.8-6.3-12.8z"/>
-                      </svg>
-                      检查成功
-                    </span>
-                  )}
-                </div>
+                        刷新
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-            
-            {/* 重复次数 */}
-            <div className="grid gap-2">
-              <Label>重复次数</Label>
-              <Input
-                type="number"
-                min="1"
-                value={editTask.repeat}
-                onChange={(e) => setEditTask(prev => ({
-                  ...prev,
-                  repeat: parseInt(e.target.value) || 1
-                }))}
-                className="w-24"
-              />
             </div>
             
             {/* 目标星球 */}

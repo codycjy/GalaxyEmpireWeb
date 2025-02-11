@@ -344,6 +344,12 @@ export default function CreateTaskDialog({ accountId, onSuccess }: CreateTaskDia
         name: taskName,
         task_type: parseInt(taskType),
         start_planet_id: startPlanetId,
+        start_planet: { 
+          galaxy: startPlanet.galaxy,
+          system: startPlanet.system,
+          planet: startPlanet.planet,
+          is_moon: startPlanet.is_moon
+        },
         targets: targets.map(target => ({
           galaxy: target.galaxy,
           system: target.system,
