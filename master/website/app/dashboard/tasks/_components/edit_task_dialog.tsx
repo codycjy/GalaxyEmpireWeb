@@ -326,26 +326,30 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
     // 5. 准备提交数据
     try {
       const submitData = {
-        account_id: editTask.account_id,
-        enabled: editTask.enabled,
-        fleet: {
-          ...editTask.fleet,
-          id: 0,  // 使用默认值
-          task_id: 0  // 使用默认值
-        },
-        start_planet_id: hasNewStartPlanet ? startPlanetId : task.start_planet_id,
         name: editTask.name.trim(),
-        next_index: 0,  // 使用默认值
-        next_start: 0,  // 使用默认值
-        repeat: editTask.repeat,
-        target_num: editTask.targets.length,
+        enabled: editTask.enabled,
+        task_type: editTask.task_type,
+        start_planet_id: hasNewStartPlanet ? startPlanetId : task.start_planet_id,
         targets: editTask.targets.map(target => ({
           galaxy: target.galaxy,
           system: target.system,
           planet: target.planet,
           is_moon: target.is_moon || false
         })),
-        task_type: editTask.task_type
+        repeat: editTask.repeat,
+        fleet: {
+          lf: editTask.fleet.lf || 0,
+          hf: editTask.fleet.hf || 0,
+          cr: editTask.fleet.cr || 0,
+          bs: editTask.fleet.bs || 0,
+          dr: editTask.fleet.dr || 0,
+          de: editTask.fleet.de || 0,
+          ds: editTask.fleet.ds || 0,
+          bomb: editTask.fleet.bomb || 0,
+          guard: editTask.fleet.guard || 0,
+          satellite: editTask.fleet.satellite || 0,
+          cargo: editTask.fleet.cargo || 0
+        }
       };
 
       const token = localStorage.getItem('token');
@@ -391,7 +395,8 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
   const handleRemoveTarget = (index: number) => {
     setEditTask(prev => ({
       ...prev,
-      targets: prev.targets.filter((_, i) => i !== index)
+      targets: prev.targets.filter((_, i) => i !== index),
+      target_num: prev.targets.length - 1
     }));
   };
 
@@ -489,6 +494,21 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
                   )}
                 </div>
               </div>
+            </div>
+            
+            {/* 重复次数 */}
+            <div className="grid gap-2">
+              <Label>重复次数</Label>
+              <Input
+                type="number"
+                min="1"
+                value={editTask.repeat}
+                onChange={(e) => setEditTask(prev => ({
+                  ...prev,
+                  repeat: parseInt(e.target.value) || 1
+                }))}
+                className="w-24"
+              />
             </div>
             
             {/* 目标星球 */}
