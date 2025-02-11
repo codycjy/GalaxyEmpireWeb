@@ -311,12 +311,7 @@ export default function EditTaskDialog({ task, onSuccess }: EditTaskDialogProps)
     // 4. 舰队配置检查
     const fleetKeys = ['lf', 'hf', 'cr', 'bs', 'dr', 'de', 'ds', 'bomb', 'guard', 'satellite', 'cargo'] as const;
     const fleetChanged = fleetKeys.some(key => editTask.fleet[key] !== task.fleet[key]);
-
-    if (!fleetChanged) {
-      toast.error('请至少修改一种舰船');
-      return;
-    }
-
+    
     // 5. 准备提交数据
     try {
       const token = localStorage.getItem('token');
