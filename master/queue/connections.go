@@ -5,7 +5,6 @@ import (
 	"GalaxyEmpireWeb/logger"
 	"fmt"
 	"net"
-	"os"
 	"sync"
 	"time"
 
@@ -35,21 +34,13 @@ var rabbitMQConnection *RabbitMQConnection
 // NewRabbitMQConnection 创建一个新的 RabbitMQ 连接
 func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 	var connStr string
-	if os.Getenv("env") == "test" {
-		connStr = os.Getenv("RABBITMQ_STR")
-		if connStr == "" {
-			log.Fatal("Failed to connect to RabbitMQ: %v",
-				zap.String("error", "RABBITMQ_STR is empty"))
-		}
-	} else {
-		connStr = fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
-			cfg.RabbitMQ.User,
-			cfg.RabbitMQ.Password,
-			cfg.RabbitMQ.Host,
-			cfg.RabbitMQ.Port,
-			cfg.RabbitMQ.Vhost,
-		)
-	}
+	connStr = fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
+		cfg.RabbitMQ.User,
+		cfg.RabbitMQ.Password,
+		cfg.RabbitMQ.Host,
+		cfg.RabbitMQ.Port,
+		cfg.RabbitMQ.Vhost,
+	)
 	conn, err := amqp.Dial(connStr)
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ: %v", zap.Error(err))
@@ -69,8 +60,8 @@ func NewRabbitMQConnection(cfg *config.RabbitMQConfig) *RabbitMQConnection {
 func InitConnection() {
 	rabbitMQConnection = NewRabbitMQConnection(config.GetRabbitMQConfig())
 	InitDeclare()
-
 }
+
 func InitDeclare() {
 	log.Info("InitDeclare")
 	log.Info("DeclareDelayedExchange")
@@ -141,7 +132,6 @@ func GetRabbitMQ() *RabbitMQConnection {
 		InitConnection()
 	}
 	return rabbitMQConnection
-
 }
 
 func (rmq *RabbitMQConnection) SendNormalMessage(body string, routingKey string) error {
@@ -158,7 +148,6 @@ func (rmq *RabbitMQConnection) SendNormalMessage(body string, routingKey string)
 				ContentType: "text/plain",
 				Body:        []byte(body),
 			})
-
 		if err != nil {
 			log.Info("Failed to send normal message: %v, retry: %d", zap.Error(err), zap.Int("retry", i+1))
 			rmq.reconnect()
@@ -189,7 +178,6 @@ func (rmq *RabbitMQConnection) SendDelayedMessage(body string, routingKey string
 				},
 				DeliveryMode: amqp.Persistent,
 			})
-
 		if err != nil {
 			log.Info("Failed to send delayed message: %v, retry: %d", zap.Error(err), zap.Int("retry", i+1))
 			rmq.reconnect()
@@ -250,7 +238,6 @@ func (rmq *RabbitMQConnection) ConsumeNormalMessage(queueName string) (<-chan am
 				false,
 				nil,
 			)
-
 			if err != nil {
 				log.Info("Failed to consume message", zap.Error(err))
 				rmq.reconnect()
