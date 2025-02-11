@@ -112,11 +112,11 @@ func (ts *taskService) GetTaskByID(ctx context.Context, taskID uint) (*models.Ta
 	log.Info("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
 	allowed, err := ts.Enforcer.Enforce(ctx, models.UserEntityPrefix+strconv.Itoa(int(userID)), task.GetEntityPrefix()+strconv.Itoa(int(taskID)), "read")
 	if err != nil {
-		log.Error("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		log.Error("[TaskService] GetTaskByID Failed to Enforce", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return nil, utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
 	}
 	if !allowed {
-		log.Warn("[TaskService] GetTaskByID", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+		log.Warn("[TaskService] GetTaskByID User Not Allowed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
 		return nil, utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
 	}
 
@@ -206,11 +206,11 @@ func (ts *taskService) DeleteTask(ctx context.Context, taskID uint) *utils.Servi
 	task.ID = taskID
 	allowed, err := ts.Enforcer.Enforce(ctx, models.UserEntityPrefix+strconv.Itoa(int(userID)), task.GetEntityPrefix()+strconv.Itoa(int(taskID)), "write")
 	if err != nil {
-		log.Error("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
+		log.Error("[TaskService] DeleteTask Failed to Enforce", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Error(err))
 		return utils.NewServiceError(http.StatusInternalServerError, "Casbin Enforce Error", err)
 	}
 	if !allowed {
-		log.Warn("[TaskService] DeleteTask", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
+		log.Warn("[TaskService] DeleteTask User Not allowed", zap.String("traceID", traceID), zap.Uint("userID", userID), zap.Uint("taskID", taskID))
 		return utils.NewServiceError(http.StatusForbidden, "Permission Denied", nil)
 	}
 	result := ts.DB.Delete(&task, taskID)
