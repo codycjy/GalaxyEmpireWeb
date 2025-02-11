@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - ci
 
 jobs:
   build-and-push:
@@ -19,7 +20,7 @@ jobs:
             tag: "node-latest"
             dockerfile: "node/Dockerfile"
             platform: "linux/amd64,linux/arm64"
-          - context: "web"
+          - context: "master/website"
             tag: "web-latest"
             dockerfile: "master/website/Dockerfile"
             platform: "linux/amd64,linux/arm64"
@@ -51,7 +52,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.context }}
-          push: true
+          push: ${{ github.ref == 'refs/heads/dev' }}
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/galaxyweb:${{ matrix.tag }}
           file: ./${{ matrix.dockerfile }}
           platforms: ${{ matrix.platform }}
