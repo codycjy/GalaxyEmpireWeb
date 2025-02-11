@@ -180,3 +180,9 @@ logs/
 *.log.*
 *.yaml
 .vscode/
+
+# Test scripts
+start_*.bat
+start.bat
+*.test.bat
+test_*.bat
