@@ -19,6 +19,10 @@ jobs:
             tag: "node-latest"
             dockerfile: "node/Dockerfile"
             platform: "linux/amd64,linux/arm64"
+          - context: "web"
+            tag: "web-latest"
+            dockerfile: "master/website/Dockerfile"
+            platform: "linux/amd64,linux/arm64"
 
     steps:
       - name: Checkout repository
