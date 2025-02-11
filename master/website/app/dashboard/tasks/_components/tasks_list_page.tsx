@@ -243,6 +243,7 @@ export default function TaskListPage() {
           <TableRow>
             <TableHead className="text-center">任务名称</TableHead>
             <TableHead className="text-center">类型</TableHead>
+            <TableHead className="text-center">初始星球</TableHead> 
             <TableHead className="text-center">目标星球</TableHead>
             <TableHead className="text-center">重复次数</TableHead>
             <TableHead className="text-center">编辑任务</TableHead>
@@ -259,8 +260,14 @@ export default function TaskListPage() {
           ) : tasks.length > 0 ? (
             tasks.map((task) => (
               <TableRow key={task.ID}>
-                <TableCell className="text-center">{task.name}</TableCell>
+                <TableCell className="text-center">{task.name}</TableCell>               
                 <TableCell className="text-center">{getTaskTypeName(task.task_type)}</TableCell>
+                <TableCell className="text-center">
+                  {task.start_planet ? 
+                    `[${task.start_planet.galaxy}:${task.start_planet.system}:${task.start_planet.planet}]` 
+                    : '未设置'
+                  }
+                </TableCell>
                 <TableCell className="text-center">
                   {task.targets && task.targets.length > 0 ? (
                     task.targets.map((target, index) => (
