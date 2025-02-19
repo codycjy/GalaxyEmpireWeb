@@ -427,10 +427,37 @@ export default function CreateTaskDialog({ accountId, onSuccess }: CreateTaskDia
     }));
     // 重置检查状态
     setStartPlanetId(0);
+    setCheckUuid('');
   };
 
+  // 添加重置表单的函数
+  const resetForm = () => {
+    setTaskName('');
+    setTaskType('1');
+    setStartPlanet({ galaxy: 0, system: 0, planet: 0, is_moon: false });
+    setStartPlanetId(0);
+    setCheckUuid('');  // 重置检查ID
+    setNewTarget({ galaxy: 0, system: 0, planet: 0, is_moon: false });
+    setTargets([]);
+    setFleet({
+      lf: 0, hf: 0, cr: 0, bs: 0, dr: 0, de: 0,
+      ds: 0, bomb: 0, guard: 0, satellite: 0, cargo: 0
+    });
+    setRepeat(1);  // 重置重复次数
+  };
+
+
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          resetForm();  // 关闭时重置表单
+        }
+        setIsOpen(open);
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -509,11 +536,9 @@ export default function CreateTaskDialog({ accountId, onSuccess }: CreateTaskDia
                 </Button>
               )}
               <div className="ml-2">
-                {startPlanetId !== 0 ? (
+                {startPlanetId !== 0 && (
                   <span className="text-green-600">✓ 检查成功</span>
-                ) : checkUuid ? (
-                  <span className="text-yellow-600">⟳ 等待检查结果</span>
-                ) : null}
+                )}
               </div>
             </div>
           </div>
@@ -676,12 +701,16 @@ export default function CreateTaskDialog({ accountId, onSuccess }: CreateTaskDia
         </Collapsible>
 
         <div className="flex justify-end gap-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              resetForm();  // 点击取消时重置表单
+              setIsOpen(false);
+            }}
+          >
             取消
           </Button>
-          <Button onClick={handleSubmit}>
-            创建
-          </Button>
+          <Button onClick={handleSubmit}>创建</Button>
         </div>
       </DialogContent>
     </Dialog>
